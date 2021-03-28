@@ -1,5 +1,5 @@
-CL3270
-======
+CL3270 Server Library
+=====================
 Copyright (c) 2021 Marco Antoniotti
 See file COPYING for licensing information
 
@@ -7,7 +7,7 @@ See file COPYING for licensing information
 DESCRIPTION
 -----------
 
-A clone of the [GO3270](https://github.com/racingmars/go3270) library
+A clone of the [go3270](https://github.com/racingmars/go3270) library
 by Matthew R. Wilson.
 
 The library follows very closely the GO code with some minimal **Common
