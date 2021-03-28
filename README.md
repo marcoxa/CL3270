@@ -43,7 +43,8 @@ I am assuming you moved in the correct directoy and that you have
 loaded the `.asd` file, etc. etc.
 
 Now you can start [wx3270](http://x3270.bgp.nu/) terminal and connect
-to `127.0.0.1` (`localhost` on W10 may not work) on port 3270.
+to `127.0.0.1` (`localhost` on W10 may not work) on port 3270.  You
+should be in business...
 
 
 ### A NOTE ON FORKING
