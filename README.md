@@ -1,6 +1,6 @@
 CL3270 Server Library
 =====================
-Copyright (c) 2021 Marco Antoniotti
+Copyright (c) 2021-2023 Marco Antoniotti
 See file COPYING for licensing information
 
 
