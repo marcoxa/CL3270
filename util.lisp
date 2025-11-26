@@ -1,9 +1,13 @@
 ;;;; -*- Mode: Lisp -*-
 
 ;;;; util.lisp
-
+;;;;
+;;;; A few useful definitions.
+;;;;
+;;;; See the file COPYING for copyright and licensing information.
 
 (in-package "CL3270")
+
 
 ;; (declaim (type (array (unsigned-byte 8)) *codes*))
 (declaim (type vector *codes*))

@@ -1,6 +1,11 @@
 ;;;; -*- Mode: Lisp -*-
 
 ;;;; looper.lisp
+;;;;
+;;;; Handling the back and forth from a 3270.
+;;;;
+;;;; See the file COPYING for copyright and licensing information.
+
 
 (in-package "CL3270")
 
@@ -12,6 +17,7 @@
 (deftype rules ()
   'hash-table ; map[string]FieldRules
   )
+
 
 ;;; Validator is a type that represents a function which can perform
 ;;; field input validation. The function is passed a string, input, and
@@ -155,7 +161,7 @@ CONN -- the network connection to the 3270 client.
 
 
     ;; The tagbodies and the GOs are probably fixable in a better way,
-    ;; but as such the mapping s almost 1-1 with Mtthew R. Wilson's GO
+    ;; but as such the mapping is almost 1-1 with Matthew R. Wilson's GO
     ;; code.
 
     (tagbody

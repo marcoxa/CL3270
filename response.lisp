@@ -1,5 +1,12 @@
 ;;;; -*- Mode: Lisp -*-
 
+;;;; response.lisp
+;;;;
+;;;; Handling responses from a 3270.
+;;;;
+;;;; See the file COPYING for copyright and licensing information.
+
+
 (in-package "CL3270")
 
 #|
@@ -47,6 +54,7 @@
        (when ',name
          (setf (gethash ,code *aid-symbols*) ',name))
        (defconstant ,const-name ,code))))
+
 
 (def-aid-code +aid-none+ #x60 none)
 (def-aid-code +aid-enter+ #x7D enter)
@@ -124,7 +132,7 @@
 
 
 (defstruct response
-  aid
+  (aid +aid-none+ :type aid)
   (row 0 :type row-index)
   (col 0 :type col-index)
   values

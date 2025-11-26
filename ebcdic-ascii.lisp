@@ -1,5 +1,13 @@
 ;;;; -*- Mode: Lisp -*-
 
+;;;; ebcdic-ascii.lisp
+;;;;
+;;;; EBCDIC <-> ASCII mincing.
+;;;;
+;;;; See the file COPYING for copyright and licensing information.
+
+;;;; To do: deal with code pages.
+
 (in-package "CL3270")
 
 (defstruct codepage

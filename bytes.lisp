@@ -4,6 +4,8 @@
 ;;;;
 ;;;; Functions needed to handle bytes (UNISIGNED-BYTE 8) and byte
 ;;;; buffers.
+;;;;
+;;;; See the file COPYING for copyright and licensing information.
 
 (in-package "CL3270")
 

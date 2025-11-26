@@ -1,6 +1,10 @@
 ;;;; -*- Mode: Lisp -*-
 
 ;;;; cl3270.asd
+;;;;
+;;;; Minimal 3720 data stream emulation.
+;;;;
+;;;; See the file COPYING for copyright and licensing information.
 
 (asdf:defsystem "cl3270"
   :author "Marco Antoniotti"

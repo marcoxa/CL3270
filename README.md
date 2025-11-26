@@ -1,6 +1,6 @@
 CL3270 Server Library
 =====================
-Copyright (c) 2021-2023 Marco Antoniotti
+Copyright (c) 2021-2026 Marco Antoniotti
 See file COPYING for licensing information
 
 
@@ -16,9 +16,10 @@ Lisp** idioms (e.g., practically no use of the Condition System).
 It is a good exercise for learning a number of things, including
 [USOCKET](https://common-lisp.net/project/usocket/api-docs.shtml).
 
-The library has been tested on W10 with [Lispworks](www.lispworks.com)
-(a version using the native `COMM` package also works), but is should
-be portable to other **Common Lisp** systems.
+The library has been tested on W10 and W11 with
+[Lispworks](www.lispworks.com) (a version using the native `COMM`
+package also works), but is should be portable to other **Common
+Lisp** systems.
 
 
 USAGE
@@ -42,9 +43,10 @@ CL3270 45 > (cl3270-example2 :debug nil)
 I am assuming you moved in the correct directory and that you have
 loaded the `.asd` file, etc. etc.
 
-Now you can start [wx3270](http://x3270.bgp.nu/) terminal and connect
-to `127.0.0.1` (`localhost` on W10 may not work) on port 3270.  You
-should be in business...
+Now you can start a **3270** *terminal emulator*, e.g.,
+[wx3270](http://x3270.bgp.nu/), and connect to `127.0.0.1`
+(`localhost` on W10 may not work) on port 3270.  You should be in
+business...
 
 
 ### A NOTE ON FORKING

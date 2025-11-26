@@ -2,7 +2,13 @@
 
 ;;;; telnet.lisp
 ;;;;
-;;;; Version with LW networking.
+;;;; Minimal 3720 data stream emulation.
+;;;;
+;;;; See the file COPYING for copyright and licensing information.
+
+;;;; Notes:
+;;;;
+;;;; Version with USOCKET networking.
 
 (in-package "CL3270")
 
@@ -143,9 +149,9 @@ to perform, the indicated option.")
 (defun negotiate-telnet (c &aux (ss (usocket:socket-stream c)))
   "Negotiate TN3270 or telnet connection options.
 
-NEGOTIATE-TELNET will naively (e.g. not checking client responses)
-negotiate the options necessary for TN3270 on a new telnet connection,
-C."
+NEGOTIATE-TELNET will naively (e.g., not checking client responses)
+negotiate the options necessary for TN3270 or similar on a new telnet
+connection, C."
 
   ;; (declare (type usocket:stream-server-usocket c))
   (write-sequence (vector +iac+ +do+ +terminal-type+) ss)
@@ -194,9 +200,11 @@ allowing up to the duration TIMEOUT for the first byte to be read."
        (cond ((and ready time-remaining) ; No timeout, no error.
               (usocket:with-mapped-conditions (ready-conn)
                 (unwind-protect
-                    (let ((n-read (read-sequence buffer (usocket:socket-stream ready-conn)))) ; There is only C.
-                      (dbgmsg
-                              ">>> ~D bytes read while flushing connection ~S ~S.~%"
+                     (let ((n-read
+			    (read-sequence
+			     buffer
+			     (usocket:socket-stream ready-conn)))) ; There is only C.
+                       (dbgmsg ">>> ~D bytes read while flushing connection ~S ~S.~%"
                               n-read
                               ready-conn
                               timeout
@@ -215,7 +223,10 @@ allowing up to the duration TIMEOUT for the first byte to be read."
              (ready ; Timeout, but somehow we may read.
               (usocket:with-mapped-conditions (ready-conn)
                 (unwind-protect
-                    (let ((n-read (read-sequence buffer (usocket:socket-stream ready-conn)))) ; There is only C.
+                     (let ((n-read
+			    (read-sequence
+			     buffer
+			     (usocket:socket-stream ready-conn)))) ; There is only C.
                       (dbgmsg
                               ">>> ~D bytes read while flushing connection.~%"
                               n-read))
@@ -234,13 +245,17 @@ allowing up to the duration TIMEOUT for the first byte to be read."
 (defun telnet-read (c pass-eor &aux (ss (usocket:socket-stream c)))
   "Return the next byte of data from the connection C.
 
-While reading, TELNET-READ filters out all telnet commands. If passEOR
-is true, then telnetRead will return upon encountering the telnet End
-of Record command, setting isEor to true. When isEor is true, the
+While reading, TELNET-READ filters out all telnet commands. If PASS-EOR
+is true, then TELNET-READ will return upon encountering the telnet 'End
+of Record' command, setting isEor to true. When isEor is true, the
 value of b is meaningless and must be ignored (valid will be false).
 When valid is true, the value in byte b is a real value read from the
 connection; when value is false, do not use the value in b. (For
-example, a valid byte AND error can be returned in the same call.)"
+example, a valid byte AND error can be returned in the same call.)
+
+Notes:
+
+This doc string needs fixing."
 
   (let ((state :normal))
     (declare (type (member :normal :command :subneg) state))
@@ -301,7 +316,7 @@ example, a valid byte AND error can be returned in the same call.)"
                                    b (telnet-code-name b)
                                    ))))
                    )
-              ) ; LOOP
+                 ) ; LOOP
       (end-of-file (eofc)
         (return-from telnet-read
           (values 0 nil nil eofc)))

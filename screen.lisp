@@ -1,6 +1,10 @@
 ;;;; -*- Mode: Lisp -*-
 
 ;;;; screen.lisp
+;;;;
+;;;; Screen handling (mapping) for minimal 3720 data stream emulation.
+;;;;
+;;;; See the file COPYING for copyright and licensing information.
 
 (in-package "CL3270")
 
