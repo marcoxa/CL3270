@@ -53,4 +53,20 @@ The value -1 is used to indicate invalid positions."
   )
 
 
+;;; Strings and octets.
+;;; Just not to depend on BABEL or FLEXI-STREAMS
+
+(defun octets-to-string (octets)
+  "Create a string from OCTETS, which is a vector of bytes."
+
+  (declare (type (vector unsigned-byte *) octets))
+
+  ;; Assume bytes code for (ASCII) characters with no encoding.
+  ;; Note that declaring (vector (unsigned-byte 8) *) is too strict
+  ;; FTTB, at least on LW.
+
+  (with-output-to-string (result)
+    (loop for o across octets
+          do (write-char (code-char o) result))))
+
 ;;;; end of file -- util.lisp
