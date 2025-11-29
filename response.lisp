@@ -94,6 +94,8 @@
 
 (def-aid-code +aid-clear+ #x6D clear)
 
+(def-aid-code +aid-query-response+ #x88)
+
 
 (defun aid-to-string (aid-key)
   (string (gethash aid-key *aid-symbols* "[unknown]")))
