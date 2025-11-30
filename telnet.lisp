@@ -12,7 +12,8 @@
 
 (in-package "CL3270")
 
-;;; Constants.
+;;; Constants
+;;; ---------
 ;;;
 ;;; That is, "telnet codes".
 ;;;
@@ -149,8 +150,17 @@ to perform, the indicated option.")
 (def-telnet-code +IAC+ 255
                  "Data Byte 255.")
 
+;;; Extra codes used here.
+
+(defconstant +binary-option+ +binary+)
+
+(defconstant +terminal-type-is+ 0)
+
+(defconstant +terminal-type-send+ +send+)
+
 
 ;;; Error Conditions
+;;; ----------------
 
 (define-condition no-3270-error (error)
   ()
@@ -173,6 +183,7 @@ to perform, the indicated option.")
 
 
 ;;; Functions
+;;; ---------
 
 #+old-simple-minded-version
 (defun negotiate-telnet (c &aux (ss (usocket:socket-stream c)))
@@ -203,149 +214,179 @@ connection, C."
 NEGOTIATE-TELNET will check client responses and negotiate the options
 necessary for TN3270 or similar on a new telnet connection, C."
 
+  ;; Sometimes the client will trigger us to send our "will" assertions
+  ;; sooner than we otherwise would. Keep track here so we know not to send
+  ;; them again.
+
   (let ((sent-will-bin nil)
         (sent-will-eor nil)
+        (devtype nil)
         )
     (declare (type boolean sent-will-bin sent-will-eor))
 
+    ;; Enable terminal type option.
+
+    (write-sequence (vector +iac+ +do+ +terminal-type+) ss)
+
     (handler-case
-        (write-sequence (vector +iac+ +do+ +terminal-type+) ss)
-      (error (e)
-        (values nil e)))
+        (setf (values sent-will-bin sent-will-eor)
+              (check-option-response c +terminal-type+ +do+))
 
-    (multiple-value-bind (err sent-will-eor sent-will-bin)
-        (check-option-response c +terminal-type+ +do+)
-      (cond ((or (typep err 'option-rejected-error)
-                 (typep err 'telnet-error))
-             (values nil (make-instance 'no-3270-error)))
-            (err
-             (values nil err)))
+      (option-rejected-error ()
+        (format *error-output* "CL3270: Error: option rejected.~%")
+        (error 'no-3270-error))
 
-      (write-sequence
-       (vector +iac+ +sb+ +terminal-type+ +send+ +iac+ +se+)
-       ss)
-      (multiple-value-bind (devtype err)
-          (get-terminal-type c)
-        (cond ((typep err 'telnet-error)
-               (values nil 'no-3270-error))
-              (err
-               (values nil err)))
+      (telnet-error ()
+        (format *error-output* "CL3270: Error: telnet error.~%")
+        (error 'no-3270-error)))
 
-        (write-sequence (vector +iac+ +do+ +eor-option+) ss)
-        (multiple-value-bind (err sent-will-eor sent-will-bin)
-            (check-option-response c +eor-option+ +do+)
-          (cond ((or (typep err 'option-rejected-error)
-                     (typep err 'telnet-error))
-                 (values nil (make-instance 'no-3270-error)))
-                (err
-                 (values nil err)))
+    ;; Switch to the first available terminal type.
 
-          (write-sequence (vector +iac+ +do+ +binary+) ss)
-          (multiple-value-bind (err sent-will-eor sent-will-bin)
-              (check-option-response c +binary+ +do+)
-            (cond ((or (typep err 'option-rejected-error)
-                       (typep err 'telnet-error))
-                   (values nil (make-instance 'no-3270-error)))
-                  (err
-                   (values nil err)))
+    (write-sequence
+     (vector +iac+ +sb+ +terminal-type+ +terminal-type-send+ +iac+ +se+)
+     ss)
 
-            ;; It's possible there are already some client requests in
-            ;; the queue that we haven't processed yet. We'll need to
-            ;; consume any outstanding requests here and respond if
-            ;; necessary.
+    (handler-case
+        (setq devtype (get-terminal-type c))
 
-            (let ((buf (make-array 3
-                                   :element-type '(unsigned-byte 8)
-                                   :initial-element 0)))
+      (telnet-error ()
+        (format *error-output* "CL3270: Error: telnet error.~%")
+        (error 'no-3270-error)))
 
-              ;; loop here...
-              (loop named drain-queue-requests
-                    do
-                      (multiple-value-bind (rs tr)
-                          (usocket:wait-for-input ss
-                                                  :read-only t
-                                                  :timeout (/ 1 100.0))
+    ;; Request end of record mode
 
-                        ;; I do not really use TR; the LOOP could
-                        ;; probably be prettified.
+    (write-sequence (vector +iac+ +do+ +eor-option+) ss)
 
-                        (if rs
-                            ;; rs is ready
-                            (handler-case
-                                (let ((n (read-sequence buf rs :end 3)))
-                                  (if (= n 3)
-                                      (cond ((and (= (aref buf 0) +iac+)
-                                                  (= (aref buf 1) +do+)
-                                                  (= (aref buf 2) +eor-option+))
-                                             (write-sequence (vector +iac+
-                                                                     +will+
-                                                                     +eor-option+)
-                                                             ss)
-                                             (setq sent-will-eor t))
-                                            ((and (= (aref buf 0) +iac+)
-                                                  (= (aref buf 1) +do+)
-                                                  (= (aref buf 2) +binary+))
-                                             (write-sequence (vector +iac+
-                                                                     +will+
-                                                                     +binary+)
-                                                             ss)
-                                             (setq sent-will-bin t)))
-                                      (format *error-output*
-                                              "CL3270: SHORT READ SHORT READ SHORT READ~%")
-                                      ))
-                              (error (e)
-                                (format *error-output*
-                                        "CL3270: strange error ~S." e)
-                                (error e)
-                                ))
+    (handler-case
+        (setf (values sent-will-bin sent-will-eor)
+              (check-option-response c +eor-option+ +do+))
 
-                            ;; RS is NIL.
-                            ;; Either we timed out, or the waiting was
-                            ;; interrupted. C.f., usocket:wait-for-input
-                            ;; documentation.
-                            (loop-finish))))
+      (option-rejected-error ()
+        (format *error-output* "CL3270: Error: option rejected.~%")
+        (error 'no-3270-error))
+
+      (telnet-error ()
+        (format *error-output* "CL3270: Error: telnet error.~%")
+        (error 'no-3270-error)))
+
+    ;; Request binary mode
+
+    (write-sequence (vector +iac+ +do+ +binary+) ss)
+
+    (handler-case
+        (setf (values sent-will-bin sent-will-eor)
+              (check-option-response c +binary+ +do+))
+
+      (option-rejected-error ()
+        (format *error-output* "CL3270: Error: option rejected.~%")
+        (error 'no-3270-error))
+
+      (telnet-error ()
+        (format *error-output* "CL3270: Error: telnet error.~%")
+        (error 'no-3270-error)))
+    
+    ;; It's possible there are already some client requests in
+    ;; the queue that we haven't processed yet. We'll need to
+    ;; consume any outstanding requests here and respond if
+    ;; necessary.
+
+    ;; loop here...
+
+    (loop named drain-queue-requests
+          with buf = (make-array 3
+                                 :element-type '(unsigned-byte 8)
+                                 :initial-element 0)
+          do
+            (multiple-value-bind (rs tr)
+                (usocket:wait-for-input ss
+                                        :read-only t
+                                        :timeout (/ 1 100.0))
+
+              ;; I do not really use TR; the LOOP could
+              ;; probably be prettified.
+
+              (if rs
+                  ;; rs is ready
+                  (let ((n (read-sequence buf rs :end 3)))
+                    (if (= n 3)
+                        (cond ((and (= (aref buf 0) +iac+)
+                                    (= (aref buf 1) +do+)
+                                    (= (aref buf 2) +eor-option+))
+                               (write-sequence (vector +iac+
+                                                       +will+
+                                                       +eor-option+)
+                                               ss)
+                               (setq sent-will-eor t))
+
+                              ((and (= (aref buf 0) +iac+)
+                                    (= (aref buf 1) +do+)
+                                    (= (aref buf 2) +binary+))
+                               (write-sequence (vector +iac+
+                                                       +will+
+                                                       +binary+)
+                                               ss)
+                               (setq sent-will-bin t)))
+                        (format *error-output*
+                                "CL3270: SHORT READ SHORT READ SHORT READ~%")
+                        ))
+
+                  ;; RS is NIL.
+                  ;; Either we timed out, or the waiting was
+                  ;; interrupted. C.f., usocket:wait-for-input
+                  ;; documentation.
+
+                  (loop-finish))))
                     
-              ;; Enter end of record mode
-              (unless sent-will-eor
-                (write-sequence (vector +iac+ +will+ +eor-option+) ss)
-                (multiple-value-bind (err sent-will-eor sent-will-bin)
-                    (check-option-response c +eor-option+ +will+)
-                  (cond ((or (typep err 'option-rejected-error)
-                             (typep err 'telnet-error))
-                         (values nil (make-instance 'no-3270-error)))
-                        (err
-                         (values nil err)))))
+      ;; Enter end of record mode.
 
-              ;; Enter binary mode
-              (unless sent-will-eor
-                (write-sequence (vector +iac+ +will+ +eor-option+) ss)
-                (multiple-value-bind (err sent-will-eor sent-will-bin)
-                    (check-option-response c +eor-option+ +will+)
-                  (cond ((or (typep err 'option-rejected-error)
-                             (typep err 'telnet-error))
-                         (values nil (make-instance 'no-3270-error)))
-                        (err
-                         (values nil err)))))
+      (unless sent-will-eor
+        (write-sequence (vector +iac+ +will+ +eor-option+) ss)
 
-              (multiple-value-bind (devinfo err)
-                  (make-device-info c devtype)
-                (when err
-                  (return-from negotiate-telnet (values nil err))))
+        (handler-case
+            (setf (values sent-will-eor sent-will-bin)
+                  (check-option-response c +eor-option+ +will+))
+          (option-rejected-error ()
+            (format *error-output* "CL3270: Error: option rejected.~%")
+            (error 'no-3270-error))
 
-              devinfo
+          (telnet-error ()
+            (format *error-output* "CL3270: Error: telnet error.~%")
+            (error 'no-3270-error))))
+
+      ;; Enter binary mode.
+
+      (unless sent-will-bin
+        (write-sequence (vector +iac+ +will+ +binary-option+) ss)
+        
+        (handler-case
+            (setf (values sent-will-eor sent-will-bin)
+                  (check-option-response c +binary-option+ +will+))
+
+          (option-rejected-error ()
+            (format *error-output* "CL3270: Error: option rejected.~%")
+            (error 'no-3270-error))
+
+          (telnet-error ()
+            (format *error-output* "CL3270: Error: telnet error.~%")
+            (error 'no-3270-error))))
+
+      (make-device-info c devtype)
   
-              #|
-              ;; (declare (type usocket:stream-server-usocket c))
-              (write-sequence (vector +iac+ +do+ +terminal-type+) ss)
-              (write-sequence (vector +iac+ +sb+ +terminal-type+ +send+ +iac+ +se+) ss)
-              (write-sequence (vector +iac+ +do+ +eor-option+) ss)
-              (write-sequence (vector +iac+ +do+ +binary+) ss)
-              (write-sequence (vector +iac+ +will+ +eor-option+ +iac+ +will+ +binary+) ss)
-              (flush-connection c 5)
-              nil
-              |#
-              )))))))
+      #| Old
+      ;; (declare (type usocket:stream-server-usocket c))
+      (write-sequence (vector +iac+ +do+ +terminal-type+) ss)
+      (write-sequence (vector +iac+ +sb+ +terminal-type+ +send+ +iac+ +se+) ss)
+      (write-sequence (vector +iac+ +do+ +eor-option+) ss)
+      (write-sequence (vector +iac+ +do+ +binary+) ss)
+      (write-sequence (vector +iac+ +will+ +eor-option+ +iac+ +will+ +binary+) ss)
+      (flush-connection c 5)
+      nil
+      |#
 
+      ))
+
+
+;;; unnegotiate-telnet
 
 (defun unnegotiate-telnet (c timeout &aux (ss (usocket:socket-stream c)))
   "Un-negotiate a TN3270 or telnet connection options.
@@ -424,21 +465,53 @@ allowing up to the duration TIMEOUT for the first byte to be read."
 
 
 ;; check-option-response
+;;
+;; Check for the client's "will/wont" (if mode is do) or "do/dont" (if
+;; mode is will) response. mode is the option command the server just
+;; sent, and option is the option code to check for.
+;;
+;; If we end up getting a client request instead, we'll response and
+;; set sentEor or sentBin before trying to read the response again.
+;;
+;; Notes:
+;;
+;; Since GO has harebrained error handling (read: let's go back to
+;; early, early C) the code for 'checkOptionResponse' in Matthew
+;; Wilsons' code must follow that scheme: 'checkOptionResponse' either
+;; returns 'nil' or returns an error thingy, while, possibly,
+;; modifying SENT-EOR or SENT-BIN (used as "out" parameters).
+;;
+;; Now. 'checkOptionResponse' is called only in 'negotiate-telnet' and
+;; its effect is always: if it "raises" 'ErrTelnetError' or
+;; 'errOptionRejected' then 'negotiateTelnet' will "catch" them and
+;; raise a 'ErrNo3270', otherwise it either "re-raises" or succeeds
+;; (returning 'nil'), possibly modifying the 'sent*' parameters as a
+;; side effect.
+;;
+;; The logic of my implementation is to cram this behavior in
+;; CHECK-OPTION-RESPONSE.  If a stray error gets raised, it will not
+;; be caught here.  As it should be.
 
 (defun check-option-response (c option mode sent-eor sent-bin)
-  ;; Returns also a boolean `sent-bin'.
+  "Check for the client's response.
 
-  (let ((but (make-array 3
-                         :element-type '(unsigned-byte)
+Arguments and Values:
+
+C : The connection, a USOCKET:USOCKET"
+
+  (let ((buf (make-array 3
+                         :element-type 'octect
                          :initial-element 0))
         (expected-yes 0)
         (expected-no 0)
+        (ss (usocket:socket-stream c))
         )
-    (declare (type (vector (unsigned-byte 8) 3) buf)
+    (declare ;; (type (vector octect 3) buf)
+             (type (vector (unsigned-byte 8) 3) buf)
              (dynamic-extent buf))
 
     (case mode
-      (+do+ (setf expected-yes +will+ expected-no +wont))
+      (+do+ (setf expected-yes +will+ expected-no +wont+))
 
       (+will+ (setf expected-yes +do+ expected-no +dont+))
 
@@ -448,19 +521,29 @@ allowing up to the duration TIMEOUT for the first byte to be read."
         (let ((n (read-sequence buf (usocket:socket-stream c))))
           (when (or (< n 3) (/= (aref buf 0) +iac+))
             (error 'telnet-error)))
-      (telnet-error (te)
+
+      (telnet-error (te) ; Re-signal.
         (error te))
+
       (error (e)
         (format *error-output*
                 "CL3270: got error ~S while checking response.~%")
         (error e)))
 
-    (unless (and (= expected-yes +do+) (= (aref buf 2) +option+))
+    ;; If the client is requesting to negotiate a mode with us before
+    ;; the response to our request, we'll satisfy it if it's one of
+    ;; the expected modes and then try to read the client's response
+    ;; again.
+    ;;
+    ;; We only want to do this if we're not already expecting a "do"
+    ;; response for the particular option.
+
+    (unless (and (= expected-yes +do+) (= (aref buf 2) option))
       (cond ((and (= (aref buf 0) +iac+)
                   (= (aref buf 1) +do+)
                   (= (aref buf 2) +eor-option+))
              (write-sequence (vector +iac+ +will+ +eor-option+) ss)
-             (setf *sent-eor* t)
+             (setf sent-eor t)
              (return-from check-option-response
                (check-option-response c option mode sent-eor sent-bin)))
 
@@ -468,7 +551,7 @@ allowing up to the duration TIMEOUT for the first byte to be read."
                   (= (aref buf 1) +do+)
                   (= (aref buf 2) +binary+))
              (write-sequence (vector +iac+ +will+ +binary+) ss)
-             (setf *sent-bin* t)
+             (setf sent-bin t)
              (return-from check-option-response
                (check-option-response c option mode sent-eor sent-bin)))
             ))
@@ -487,12 +570,15 @@ allowing up to the duration TIMEOUT for the first byte to be read."
       (error 'telnet-error))
 
     ;; All good, client accepted the option we requested.
-    t))
+
+    (values sent-eor sent-bin)))
 
 
 ;;; get-terminal-type
 
 (defun get-terminal-type (c)
+  "Read the response to a \"send terminal type\" option subfield command."
+
   (let* ((buf (make-array 100
                           :element-type '(unsigned-byte 8)
                           :initial-element 0))
