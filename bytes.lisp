@@ -10,11 +10,21 @@
 (in-package "CL3270")
 
 (deftype octet ()
+  "The Octet Type.
+
+Useful as a shorthand."
   '(unsigned-byte 8))
 
 
 (deftype buffer ()
-  '(array (unsigned-byte 8) (*)))
+  "The Buffer Type.
+
+Denotes the vectors that contain `octet's.
+
+Notes:
+
+Often these vectors have a fill pointer and are adjustable."
+  '(array octet (*)))
 
 
 (declaim (inline make-buffer))
@@ -23,14 +33,18 @@
                          )
   (declare (type (integer 0 (#.array-total-size-limit)) length)
            (type (integer 1 (#.array-total-size-limit)) capacity))
+  (assert (<= length capacity))
   (make-array capacity
-              :element-type '(unsigned-byte 8)
+              ;; :element-type '(unsigned-byte 8)
+              :element-type 'octet
               :initial-element 0
-              :fill-pointer (min length (max 1 (1- capacity))) ; Being paranoid.
+              ;; :fill-pointer (min length (max 1 (1- capacity))) ; Being paranoid.
+              :fill-pointer length
               ))
 
 
-(declaim (inline write-buffer))
+(declaim (ftype (function (buffer octet) buffer) write-buffer)
+         (inline write-buffer))
 (defun write-buffer (buffer b)
   "Write a (unsigned) byte B at the end of BUFFER.
 
@@ -44,7 +58,8 @@ The (modified) BUFFER is returned."
   buffer)
 
 
-(declaim (inline write-buffer*))
+(declaim (ftype (function (buffer (vector octet)) buffer) write-buffer*)
+         (inline write-buffer*))
 (defun write-buffer* (buffer bs)
   "Appends a vector of (unsigned) bytes BS at the end of BUFFER.
 
@@ -60,14 +75,3 @@ The (modified) BUFFER is returned."
 
 
 ;;;; end of file -- bytes.lisp
-
-                   
-  
-  
-
-             
-  
-  
-
-
-
