@@ -13,7 +13,7 @@
 
 (in-package "CL3270")
 
-(defstruct (device-info (:conc-name nil)
+(defstruct (device-info (:conc-name nil))
 
   "The Device Info Struct.
 
