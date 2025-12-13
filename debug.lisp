@@ -12,7 +12,7 @@
 
 (defun dbgmsg (fmt &rest args)
   (when *do-debug*
-    (write-string "CL3270: " *trace-output*)
+    (write-string ";;; CL3270: " *trace-output*)
     (apply #'format *trace-output* fmt args)))
 
 
