@@ -2,7 +2,7 @@
 
 ;;;; setup.lisp
 ;;;;
-;;;; Ensuring that the codepages are generated.
+;;;; Ensuring that the codepages are generated, compiled and loaded.
 ;;;; This is essentially a "script" file.
 ;;;;
 ;;;; See the COPYING file in the main folder for licensing and
@@ -17,28 +17,83 @@
 When not NULL generation can take place.")
 
 
-;;; Pretty kludgy and blunt.  I should explicitely check that the
-;;; desired code pages are in place, instead of just checking that
-;;; there are files in the folder.
+(defun compile-load-code-page-file (cpf)
+  "Compile (if needed) and load a CL code page file CPF.
 
-(eval-when (:load-toplevel :compile-toplevel :execute)
+Notes:
+
+This function is needed as the files are not managed by the system
+defintion facilities like ASDF."
+
+  (declare (type pathname cpf))
+  
+  (if (not (probe-file cpf))
+      (warn "CL3270: nonexistent code page file '~A.~A'."
+            (pathname-name cpf)
+            (pathname-type cpf))
+
+      (let* ((cpcfp (compile-file-pathname cpf))
+             (cpfwd (file-write-date cpf))
+             (cpcfpwd (file-write-date cpcfp))
+             )
+        (declare (type pathname cpcfp)
+                 (type (or null integer) cpfwd cpcfpwd))
+
+        (cond ((and (probe-file cpcfp)
+                    cpfwd
+                    cpcfpwd
+                    (< cpfwd cpcfpwd))
+               (load cpcfp))
+
+          ((null (probe-file cpcfp))
+           (compile-file cpf)
+           (load cpcfp))
+
+          ((or (null cpfwd) (null cpcfpwd))
+           (warn "CL3270: cannot determine write dates for '~A'."
+                 (pathname-name cpf)))
+          ))))
+
+
+(defun ensure-codepages ()
+  "Ensure that the Common Lisp codepages are generated and loaded."
+
   (handler-case
       (when *generate-code-pages*
-        (loop initially (format t ";;; CL3270: setup codepages.~%")
+        (format t "~%;;; CL3270: setting up codepages...~%")
 
-              for cp-files = (directory *cl3270-code-page-local-dir*)
-              if (null cp-files)
-                do (generate-code-pages)
-              else
-                do (dolist (cp-file cp-files)
-                     (compile-file cp-file)
-                     (load (compile-file-pathname cp-file)))
-                   (loop-finish)
-                
-              finally (format t ";;; CL3270: codepages setup complete.~2%")
-                      ))
+        (cond ((some (complement #'probe-file) *cl3270-code-page-pathnames*)
+               (format t "~&;;; CL3270: generating codepages...~2%")
+               (generate-code-pages)
+               (format t "~&;;; CL3270: codepages generated.~2%"))
+
+              (t
+               (format t "~&;;; CL3270: codepages already generated.~2%")))
+
+        (format t "~&;;; CL3270: compiling and/or loading codepages...~2%")
+        (dolist (cp-file *cl3270-code-page-pathnames*)
+          (format t "~&;;; CL3270: compiling and/or loading '~A'.~%"
+                  (pathname-name cp-file))
+          (compile-load-code-page-file cp-file))
+
+        (format t "~%;;; CL3270: codepages setup complete.~2%"))
+
     (error (e)
       (format *error-output* ";;; CL3270: codepages setup error ~S.~%" e)
       (error e))))
+
+
+;;; Pretty kludgy and blunt.
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+
+  ;; Yep... I am doing it twice: while compiling and loading.
+  ;; I need to check that the "loaded" codepage is newer than the
+  ;; (compiled) file.
+  ;;
+  ;; Will do this later... if ever.
+
+  (ensure-codepages)
+  )
 
 ;;;; setup.lisp ends here.
