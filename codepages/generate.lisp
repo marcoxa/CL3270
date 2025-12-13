@@ -116,10 +116,20 @@ Return, as two values, the two codes appearing on LINE."
       )))
 
 
+;;; *code-pages-dir*
+
+(defparameter *code-pages-dir*
+  (merge-pathnames (make-pathname :directory (:relative "codepages"))
+                   *cl3270-source-location*)
+  "The location of the 'codepages' sub module.")
+
+
 ;;; *code-pages-ucm-dir*
 
 (defparameter *code-pages-ucm-dir*
-  (make-pathname :directory '(:relative "icu-data" "charset" "data" "ucm"))
+  (merge-pathnames
+   (make-pathname :directory '(:relative "icu-data" "charset" "data" "ucm"))
+   *code-pages-dir*)
   "The (relative) directory where the ICU UCM files reside.")
 
 
