@@ -18,26 +18,27 @@ which can be found at
 [go3720](https://pkg.go.dev/github.com/racingmars/go3270)."
 
   :components ((:file "cl3270-pkg")
-               (:file "setup" :depends-on ("cl3270-pkg"))
-               (:file "bytes"  :depends-on ("cl3270-pkg" "setup"))
+               (:file "setup"    :depends-on ("cl3270-pkg"))
+               (:file "bytes"    :depends-on ("cl3270-pkg" "setup"))
                ;; (:file "ebcdic-ascii" :depends-on ("cl3270-pkg" "bytes"))
                (:file "ebcdic"   :depends-on ("bytes"))
-               (:file "util"  :depends-on ("cl3270-pkg" "setup"))
-               (:file "debug" :depends-on ("cl3270-pkg" "setup"))
+               (:file "util"     :depends-on ("cl3270-pkg" "setup"))
+               (:file "debug"    :depends-on ("cl3270-pkg" "setup"))
                (:file "codepage" :depends-on ("bytes"))
-               (:file "device" :depends-on ("cl3270-pkg" "setup"))
+               (:file "device"   :depends-on ("cl3270-pkg" "setup"))
                ;; (:file "telnet" :depends-on ("ebcdic-ascii" "device" "bytes" "util" "debug"))
                ;; (:file "response" :depends-on ("ebcdic-ascii" "telnet"))
                (:file "telnet"
                 :depends-on ("ebcdic" "device" "bytes" "util" "debug"))
                (:file "response" :depends-on ("ebcdic" "telnet"))
-               (:file "screen" :depends-on ("telnet" "response"))
-               (:file "looper" :depends-on ("screen"))
+               (:file "screen"   :depends-on ("telnet" "response"))
+               (:file "looper"   :depends-on ("screen"))
                (:module "codepages"
                 :components ((:file "cp310")
-                             (:file "generate" :depends-on ("cp310"))
-                             (:file "setup"    :depends-on ("generate" "cps"))
-                             (:module "cps"    :depends-on ("cp310")) ; Yep.  Quite fake.
+                             (:file "cpbracket" :depends-on ("cp310"))
+                             (:file "generate"  :depends-on ("cp310"))
+                             (:file "setup"     :depends-on ("generate" "cps"))
+                             (:module "cps"     :depends-on ("cp310")) ; Yep.  Quite fake.
                              )
                 :depends-on ("codepage"))
                )
