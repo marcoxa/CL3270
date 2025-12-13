@@ -119,7 +119,9 @@ Return, as two values, the two codes appearing on LINE."
 ;;; *code-pages-dir*
 
 (defparameter *code-pages-dir*
-  (merge-pathnames (make-pathname :directory (:relative "codepages"))
+  (merge-pathnames (make-pathname :directory '(:relative "codepages")
+                                  :name nil
+                                  :type nil)
                    *cl3270-source-location*)
   "The location of the 'codepages' sub module.")
 
@@ -128,7 +130,9 @@ Return, as two values, the two codes appearing on LINE."
 
 (defparameter *code-pages-ucm-dir*
   (merge-pathnames
-   (make-pathname :directory '(:relative "icu-data" "charset" "data" "ucm"))
+   (make-pathname :directory '(:relative "icu-data" "charset" "data" "ucm")
+                  :name nil
+                  :type nil)
    *code-pages-dir*)
   "The (relative) directory where the ICU UCM files reside.")
 
@@ -138,19 +142,10 @@ Return, as two values, the two codes appearing on LINE."
 ;;; This file contains a manually curated list of IBM code page UCM
 ;;; files, taken from *CODE-PAGES-UCM-DIR*.
 
-(eval-when (:load-toplevel :execute)
 (defparameter *ibm-icu-code-page-filenames*
   (make-pathname :name "icu-data-ibm-ucm-files" :type "txt"
-                 :defaults *load-pathname*
-                 ;; :defaults (lw:current-pathname)
-                 )))
-
-(eval-when (:compile-toplevel)
-(defparameter *ibm-icu-code-page-filenames*
-  (make-pathname :name "icu-data-ibm-ucm-files" :type "txt"
-                 :defaults *compile-file-pathname*
-                 ;; :defaults (lw:current-pathname)
-                 )))
+                 :defaults *code-pages-dir*
+                 ))
 
 
 ;;; *ibm-icu-code-page-local-dir*
@@ -158,45 +153,19 @@ Return, as two values, the two codes appearing on LINE."
 ;;; This directory contains a manually curated set of IBM code page
 ;;; UCM files, taken from *CODE-PAGES-UCM-DIR*.
 
-(eval-when (:load-toplevel :execute)
 (defparameter *ibm-icu-code-page-local-dir*
   (merge-pathnames (make-pathname :directory '(:relative "icu-data-ibm")
                                   :name nil
                                   :type nil)
-                   (make-pathname :name nil :type nil
-                                  :defaults *load-pathname*)
-                   ;; (lw:current-pathname)
-                   )))
+                   *code-pages-dir*))
 
 
-(eval-when (:compile-toplevel)
-(defparameter *ibm-icu-code-page-local-dir*
-  (merge-pathnames (make-pathname :directory '(:relative "icu-data-ibm")
-                                  :name nil
-                                  :type nil)
-                   (make-pathname :name nil :type nil
-                                  :defaults *compile-file-pathname*)
-                   ;; (lw:current-pathname)
-                   )))
-
-
-(eval-when (:load-toplevel :execute)
 (defparameter *cl3270-code-page-local-dir*
   (merge-pathnames (make-pathname :directory '(:relative "cps")
                                   :name nil
                                   :type nil)
-                   (make-pathname :name nil :type nil
-                                  :defaults *load-pathname*))
-  "The (relative) directory where the (Lisp) code pages reside."))
-
-(eval-when (:compile-toplevel)
-(defparameter *cl3270-code-page-local-dir*
-  (merge-pathnames (make-pathname :directory '(:relative "cps")
-                                  :name nil
-                                  :type nil)
-                   (make-pathname :name nil :type nil
-                                  :defaults *compile-file-pathname*))
-  "The (relative) directory where the (Lisp) code pages reside."))
+                   *code-pages-dir*)
+  "The directory where the generated Common Lisp code pages reside.")
 
 
 ;;; clean-code-page-local-dir
@@ -208,7 +177,7 @@ Return, as two values, the two codes appearing on LINE."
 CPS-DIR defaults to *CL3270-CODE-PAGE-LOCAL-DIR*."
 
   (dolist (cpf (directory cps-dir))
-    (format t "CL3270: deleting CL codepage '~A.~A'.~%"
+    (format t ";;; CL3270: deleting CL codepage '~A.~A'.~%"
             (pathname-name cpf)
             (pathname-type cpf))
     (delete-file cpf)))
@@ -322,7 +291,7 @@ this is useful for debugging purposes.
   (assert (search (write-to-string cp-id)
                   (pathname-name (pathname cp-ucm-file)))
       ()
-    "CL3270: error: codepage id ~S and file name ~S are incompatible."
+    "CL3270: codepage id ~S and file name ~S are incompatible."
     cp-id
     (pathname-name (pathname cp-ucm-file)))
 
