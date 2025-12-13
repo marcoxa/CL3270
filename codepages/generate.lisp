@@ -186,21 +186,33 @@ CPS-DIR defaults to *CL3270-CODE-PAGE-LOCAL-DIR*."
 ;;; *ibm-x3270-icu-code-page-codes*
 
 (defparameter *ibm-x3270-icu-code-page-codes*
-  (list 273 275 277 278 280 284 285 297 424 500 803 870 871 875 880
-               1026 1047 1140 1141 1142 1143 1144 1145 1146 1147 1148
-               1149 1160) ; Matthew Wilson's Discord post list.
+  (list 37 273 275 277 278 280 284 285 297 424 500 803 870 871 875 880
+        1026 1047 1140 1141 1142 1143 1144 1145 1146 1147 1148
+        1149 1160) ; Matthew Wilson's Discord post list.
   
   "Code page ids of files 'ibm-\\([0-9]+\\)_*.ucm' in *CODE-PAGES-UCM-DIR*.
 
 These are the code pages recognized by x3270.  Eventually a few more
-will be added according to what Matthew Wilson does with his GO library.")
+will be added according to what Matthew Wilson does with his GO
+library.")
+
+
+
+(defparameter *cl3270-code-page-pathnames*
+  (mapcar #'(lambda (cpn)
+              (make-pathname :name (format nil "cp-~D" cpn)
+                             :type "lisp"
+                             :defaults *cl3270-code-page-local-dir*))
+          *ibm-x3270-icu-code-page-codes*)
+  "List of CL code page pathnames.")
+              
 
 
 (defun select-codepage-file (cp-id
                              &optional
                              (cp-ucm-dir *ibm-icu-code-page-local-dir*))
   (find-if #'(lambda (f)
-               (search (write-to-string cp-id) (pathname-name f)))
+               (search (format nil "ibm-~D" cp-id) (pathname-name f)))
            (directory cp-ucm-dir)))
 
 
@@ -209,7 +221,7 @@ will be added according to what Matthew Wilson does with his GO library.")
                               (cp-ucm-dir *ibm-icu-code-page-local-dir*)
                               )
   (flet ((select-cp-file (cp-id file-name)
-           (search (write-to-string cp-id) (pathname-name file-name))))
+           (search (format nil "ibm-~D" cp-id) (pathname-name file-name))))
 
     (loop with ibm-data-ucm-files = (directory cp-ucm-dir)
           for cp-id in cp-ids
@@ -288,7 +300,7 @@ this is useful for debugging purposes.
   (declare (type (or string pathname) cp-ucm-file)
            (type pathname cp-pathname))
 
-  (assert (search (write-to-string cp-id)
+  (assert (search (format nil "ibm-~D" cp-id)
                   (pathname-name (pathname cp-ucm-file)))
       ()
     "CL3270: codepage id ~S and file name ~S are incompatible."
