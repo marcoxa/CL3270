@@ -16,6 +16,13 @@ Useful as a shorthand."
   '(unsigned-byte 8))
 
 
+(deftype dict () 
+  "The Dict Type.
+
+Just a synonym of hash-table."
+  'hash-table)
+
+
 (deftype buffer ()
   "The Buffer Type.
 
