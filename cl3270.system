@@ -8,6 +8,15 @@
 
 (mk:defsystem "cl3270"
   :author "Marco Antoniotti"
+  :licence "MIT"
+  :documentation "The CL3270 system.
+
+The CL3270 implements a 3270 data stream handling/emulation.
+
+THe inspiration (and source material) is Matthew Wilson's GO library
+which can be found at
+[go3720](https://pkg.go.dev/github.com/racingmars/go3270)."
+
   :binary-pathname "cl3270.bin"
   :components ((:file "cl3270-pkg")
                (:file "setup" :depends-on ("cl3270-pkg"))
@@ -29,7 +38,7 @@
                 :components ((:file "cp310")
                              (:file "generate" :depends-on ("cp310"))
                              (:file "setup"    :depends-on ("generate" "cps"))
-                             (:module "cps"    :depends-on ("cp310"))
+                             (:module "cps"    :depends-on ("cp310")) ; Yep.  Quite fake.
                              )
                 :depends-on ("codepage"))
                )
