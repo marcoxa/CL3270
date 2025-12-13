@@ -17,13 +17,15 @@
 ;;; ucm-process-file
 ;;;
 ;;; Notes:
+;;;
 ;;; 2025-12-04: MA: This is essentially the `read` function in Matthew
 ;;; Wilson's `generate` GO code.
 
-(defun ucm-process-file (ucm-file)
+(defun ucm-process-file (ucm-filename &aux (ucm-file (pathname ucm-filename)))
   "Process a UCM file and returns a map of of Unicode code points to EBCDIC."
 
-  (declare (type (or string pathname) ucm-file))
+  (declare (type (or string pathname) ucm-filename)
+           (type pathname ucm-file))
 
   ;; UCM files are not that big.  I just read in a list of "lines" and
   ;; then parse them.  Yep.  No standard stream "line reader" in Common Lisp.
@@ -58,9 +60,14 @@
 
             (t (multiple-value-bind (code-point ebcdic)
                    (parse-ucm-line line)
-                 (when (nth 1 (gethash code-point u2e))
-                   (warn "CL3270: duplicate code-point U~4,'0X.~%"
-                         code-point))
+                 (multiple-value-bind (e foundp)
+                     (gethash code-point u2e)
+                   (when foundp
+                     (warn "CL3270: duplicate code-point #\\U~4,'0X (#x~2,'0X) in '~A.~A'~%"
+                           code-point
+                           e
+                           (pathname-name ucm-file)
+                           (pathname-type ucm-file))))
                  (setf (gethash code-point u2e) ebcdic)))
             ))
 
@@ -163,11 +170,47 @@ Return, as two values, the two codes appearing on LINE."
                    )))
 
 
+(eval-when (:load-toplevel :execute)
+(defparameter *cl3270-code-page-local-dir*
+  (merge-pathnames (make-pathname :directory '(:relative "cps")
+                                  :name nil
+                                  :type nil)
+                   (make-pathname :name nil :type nil
+                                  :defaults *load-pathname*))
+  "The (relative) directory where the (Lisp) code pages reside."))
+
+(eval-when (:compile-toplevel)
+(defparameter *cl3270-code-page-local-dir*
+  (merge-pathnames (make-pathname :directory '(:relative "cps")
+                                  :name nil
+                                  :type nil)
+                   (make-pathname :name nil :type nil
+                                  :defaults *compile-file-pathname*))
+  "The (relative) directory where the (Lisp) code pages reside."))
+
+
+;;; clean-code-page-local-dir
+
+(defun clean-code-page-local-dir (&optional
+                                  (cps-dir *cl3270-code-page-local-dir*))
+  "Delete (generated) codepage files from CPS-DIR.
+
+CPS-DIR defaults to *CL3270-CODE-PAGE-LOCAL-DIR*."
+
+  (dolist (cpf (directory cps-dir))
+    (format t "CL3270: deleting CL codepage '~A.~A'.~%"
+            (pathname-name cpf)
+            (pathname-type cpf))
+    (delete-file cpf)))
+
+
 ;;; *ibm-x3270-icu-code-page-codes*
 
 (defparameter *ibm-x3270-icu-code-page-codes*
   (list 273 275 277 278 280 284 285 297 424 500 803 870 871 875 880
-        1026 1047 1140 1141 1142 1143 1144 1145 1146 1147 1148 1149 1160)
+               1026 1047 1140 1141 1142 1143 1144 1145 1146 1147 1148
+               1149 1160) ; Matthew Wilson's Discord post list.
+  
   "Code page ids of files 'ibm-\\([0-9]+\\)_*.ucm' in *CODE-PAGES-UCM-DIR*.
 
 These are the code pages recognized by x3270.  Eventually a few more
@@ -273,159 +316,169 @@ this is useful for debugging purposes.
     cp-id
     (pathname-name (pathname cp-ucm-file)))
 
-  (let* ((u2e (ucm-process-file cp-ucm-file))
-         (e2u (let ((e2u-map (make-dict)))
-                (maphash #'(lambda (k v) (setf (gethash v e2u-map) k)) u2e)
-                e2u-map))
-         )
-    (declare (type hash-table u2e e2u))
+  (format t ";;; CL3270: Generating ~S~%" cp-pathname)
+  (format t ";;; CL3270: from       ~S~2%" cp-ucm-file)
+  (finish-output)
 
-    (format t ";;; Generating ~S~%;;; from       ~S~2%" cp-pathname cp-ucm-file)
-    (with-open-file (cps cp-pathname
-                         :direction :output
-                         :if-exists :supersede
-                         :element-type 'character
-                         :external-format :utf-8
-                         )
-      (format cps ";;;; -*- Mode: Lisp; Encoding: UTF-8 -*-~2%")
-      (format cps ";;;; ~A.~A~2%"
-              (pathname-name cp-pathname)
-              (pathname-type cp-pathname))
+  (handler-case
+      (let* ((u2e (ucm-process-file cp-ucm-file))
+             (e2u (let ((e2u-map (make-dict)))
+                    (maphash #'(lambda (k v) (setf (gethash v e2u-map) k)) u2e)
+                    e2u-map))
+             )
+        (declare (type hash-table u2e e2u))
 
-      (format cps ";;;; This file is part of CL3270~%;;;;~%")
-      (format cps
-              ";;;; See the file COPYING in the top folder for licensing and~%")
-      (format cps ";;;; copyright information.~%")
-      (format cps ";;;;~%;;;; File generated on ~A~2%" (today-date t t t))
+        (with-open-file (cps cp-pathname
+                             :direction :output
+                             :if-exists :supersede
+                             :element-type 'character
+                             :external-format :utf-8
+                             )
+          (format cps ";;;; -*- Mode: Lisp; Coding: UTF-8 -*-~2%")
+          (format cps ";;;; ~A.~A~2%"
+                  (pathname-name cp-pathname)
+                  (pathname-type cp-pathname))
 
-      (format cps "(in-package \"CL3270\")~2%")
+          (format cps ";;;; This file is part of CL3270~%;;;;~%")
+          (format cps ";;;; See the file COPYING in the ")
+          (format cps "top folder for licensing and~%")
+          (format cps ";;;; copyright information.~%")
+          (format cps ";;;;~%;;;; File generated on ~A~2%" (today-date t t t))
 
-      (format cps ";;; *e2u-codepage-~D* *u2e-codepage-~D*~%;;;~%" cp-id cp-id)
-      (format cps ";;; IBM CP ~D <-> Unicode mappings from " cp-id)
-      (format cps "`https://github.com/unicode-org/icu-data`.~2%")
+          (format cps "(in-package \"CL3270\")~2%")
 
-      (block e2ucp
-        (terpri cps) (terpri cps)
-        (format cps "(defparameter *e2u-codepage-~D*~%" cp-id)
-        (format cps "  (make-array 256 :element-type '(mod #x10000)~%")
-        (format cps "    :initial-contents '(~%")
+          (format cps ";;; *e2u-codepage-~D*~%" cp-id)
+          (format cps ";;; *u2e-codepage-~D*~%;;;~%" cp-id)
+          (format cps ";;; IBM CP ~D <-> Unicode mappings from " cp-id)
+          (format cps "`https://github.com/unicode-org/icu-data`.~2%")
 
-        (let ((line 0)
-              (pos -1)
+          (block e2ucp
+            (terpri cps) (terpri cps)
+            (format cps "(defparameter *e2u-codepage-~D*~%" cp-id)
+            (format cps "  (make-array 256 :element-type '(mod #x10000)~%")
+            (format cps "    :initial-contents '(~%")
+
+            (let ((line 0)
+                  (pos -1)
+                  )
+
+              (declare (type fixnum line pos))
+
+              (loop initially (format cps "~4T#|         ")
+                    for i from 0 upto #xf
+                    do (format cps "~6<_~X~> " i)
+                    finally (format cps "|#~%"))
+
+              (loop initially (format cps "~4T#| 0_ |#   ")
+                    for i from 0 upto #xff
+                    do (incf pos)
+                       (when (>= pos 16)
+                         (incf line)
+                         (setq pos 0)
+                         (format cps "~&~4t#| ~X_ |#   " line))
+                       (multiple-value-bind (v foundp)
+                           (gethash i e2u)
+                         (if foundp
+                             (format cps "~6<#x~2,'0X~> " v)
+                             (format cps "~6<#x~X~> " (char-code #\ufffd)))))
               )
 
-          (declare (type fixnum line pos))
-
-          (loop initially (format cps "~4T#|         ")
-                for i from 0 upto #xf
-                do (format cps "~6<_~X~> " i)
-                finally (format cps "|#~%"))
-
-          (loop initially (format cps "~4T#| 0_ |#   ")
-                for i from 0 upto #xff
-                do (incf pos)
-                   (when (>= pos 16)
-                     (incf line)
-                     (setq pos 0)
-                     (format cps "~&~4t#| ~X_ |#   " line))
-                   (multiple-value-bind (v foundp)
-                       (gethash i e2u)
-                     (if foundp
-                         (format cps "~6<#x~2,'0X~> " v)
-                         (format cps "~6<#x~X~> " (char-code #\ufffd)))))
-          )
-
-        (format cps "~&~4T))~@
+            (format cps "~&~4T))~@
                      ~4T\"Implements the EBCDIC->Unicode IBM CP ~D code page.~
                      \")~%"
-                cp-id)
-        ) ; e2ucp
+                    cp-id)
+            ) ; e2ucp
 
 
-      (block u2ecp
-        (format cps "~2%(defparameter *u2e-codepage-~D*~%" cp-id)
-        (format cps "  (make-array 256 :element-type '(mod #x10000)~%")
-        (format cps "    :initial-contents '(~%")
+          (block u2ecp
+            (format cps "~2%(defparameter *u2e-codepage-~D*~%" cp-id)
+            (format cps "  (make-array 256 :element-type '(mod #x10000)~%")
+            (format cps "    :initial-contents '(~%")
 
-        (let ((line 0)
-              (pos -1)
+            (let ((line 0)
+                  (pos -1)
+                  )
+              (declare (type fixnum line pos))
+
+              (loop initially (format cps "~4T#|         ")
+                    for i from 0 upto #xf
+                    do (format cps "~6<_~X~> " i)
+                    finally (format cps "|#~%"))
+
+              (loop initially (format cps "~4T#| 0_ |#   ")
+                    for i from 0 upto #xff
+                    do (incf pos)
+                       (when (>= pos 16)
+                         (incf line)
+                         (setq pos 0)
+                         (format cps "~&~4t#| ~X_ |#   " line))
+                       (multiple-value-bind (v foundp)
+                           (gethash i u2e)
+                         (if foundp
+                             (format cps "~6<#x~2,'0X~> " v)
+                             (format cps "~6<#x~X~> " #x3f))))
               )
-          (declare (type fixnum line pos))
 
-          (loop initially (format cps "~4T#|         ")
-                for i from 0 upto #xf
-                do (format cps "~6<_~X~> " i)
-                finally (format cps "|#~%"))
-
-          (loop initially (format cps "~4T#| 0_ |#   ")
-                for i from 0 upto #xff
-                do (incf pos)
-                   (when (>= pos 16)
-                     (incf line)
-                     (setq pos 0)
-                     (format cps "~&~4t#| ~X_ |#   " line))
-                   (multiple-value-bind (v foundp)
-                       (gethash i u2e)
-                     (if foundp
-                         (format cps "~6<#x~2,'0X~> " v)
-                         (format cps "~6<#x~X~> " #x3f))))
-          )
-
-        (format cps "~&~4T))~@
+            (format cps "~&~4T))~@
                      ~4T\"Implements the Unicode->EBCDIC IBM CP ~D code page.~
                      \")~%"
-                cp-id)
-        ) ; u2ecp
+                    cp-id)
+            ) ; u2ecp
 
 
-     (block high-u2e
-        (format cps "~2%(defparameter *high-u2e-codepage-~D*~%" cp-id)
-        (format cps "  (make-dict~%")
-        (format cps "   :initial-map~%")
-        (format cps "   '(~%~4t")
+          (block high-u2e
+            (format cps "~2%(defparameter *high-u2e-codepage-~D*~%" cp-id)
+            (format cps "  (make-dict~%")
+            (format cps "   :initial-map~%")
+            (format cps "   '(~%~4t")
 
-        (loop with pos = -1
-              for k being the hash-key of u2e using (hash-value v)
-              when (> k #xff)
-                do (incf pos)
-                   (when (>= pos 4)
-                     (setq pos 0)
-                     ;; (terpri cps)
-                     (format cps "~&~4t"))
-                   (format cps "(#x~4,'0X #x~4,'0X) " k v)
-                )
+            (loop with pos = -1
+                  for k being the hash-key of u2e using (hash-value v)
+                  when (> k #xff)
+                    do (incf pos)
+                       (when (>= pos 4)
+                         (setq pos 0)
+                         ;; (terpri cps)
+                         (format cps "~&~4t"))
+                       (format cps "(#x~4,'0X #x~4,'0X) " k v)
+                       )
 
-        (format cps "~&~4T))~@
+            (format cps "~&~4T))~@
                      ~4T\"Unicode->EBCDIC IBM CP ~D map for codepoints > #xff.~
                      \")~%"
-                cp-id)
-        ) ; high-u2e
+                    cp-id)
+            ) ; high-u2e
 
 
-     ;; Creating the codepage struct.
+          ;; Creating the codepage struct.
 
-     (block cp-creation
-       (terpri cps) (terpri cps)
-       (format cps "(defparameter *codepage-~D*~%" cp-id)
-       (format cps "  (make-codepage~%")
-       (format cps "   :id ~S~%" cp-id)
-       (format cps "   :name \"Codepage ~S\"~%" cp-id)
-       (format cps "   :e2u *e2u-codepage-~S*~%" cp-id)
-       (format cps "   :u2e *u2e-codepage-~S*~%" cp-id)
-       (format cps "   :high-u2e *high-u2e-codepage-~D*~%" cp-id)
-       (format cps "   :esub #x3f~%")
-       (format cps "   :ge #x08~%")
-       (format cps "   :ge2u *cp310-to-unicode*~%")
-       (format cps "   :u2ge *unicode-to-cp310*~%")
-       (format cps "   )~%")
-       (format cps "  \"Codepage ~S.\")~2%" cp-id)
-       ) ; cp-creation
+          (block cp-creation
+            (terpri cps) (terpri cps)
+            (format cps "(defparameter *codepage-~D*~%" cp-id)
+            (format cps "  (make-codepage~%")
+            (format cps "   :id ~S~%" cp-id)
+            (format cps "   :name \"Codepage ~S\"~%" cp-id)
+            (format cps "   :e2u *e2u-codepage-~S*~%" cp-id)
+            (format cps "   :u2e *u2e-codepage-~S*~%" cp-id)
+            (format cps "   :high-u2e *high-u2e-codepage-~D*~%" cp-id)
+            (format cps "   :esub #x3f~%")
+            (format cps "   :ge #x08~%")
+            (format cps "   :ge2u *cp310-to-unicode*~%")
+            (format cps "   :u2ge *unicode-to-cp310*~%")
+            (format cps "   )~%")
+            (format cps "  \"Codepage ~S.\")~2%" cp-id)
+            ) ; cp-creation
       
 
-      (format cps "~%;;;; ~A.~A ends here.~%"
-              (pathname-name cp-pathname)
-              (pathname-type cp-pathname))
-      )))
+          (format cps "~%;;;; ~A.~A ends here.~%"
+                  (pathname-name cp-pathname)
+                  (pathname-type cp-pathname))
+          )
+        t)
+
+    (error (e)
+      (format *error-output* "CL3270: error: ~S.~%" e)
+      nil)))
 
 
 ;;; Utilities.
