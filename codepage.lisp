@@ -29,7 +29,7 @@ Of course, vendors messed up, as the Wikipedia page explains."
   '(mod #x10000))
 
 
-(defstruct codepage
+(defstruct (codepage (:constructor %make-cp))
   "The Codepage Structure."
 
   ;; (id 0 :type codepage-id :read-only t) ; LW complains.
@@ -78,6 +78,33 @@ Of course, vendors messed up, as the Wikipedia page explains."
     (format stream "CODEPAGE ~D ~S"
             (codepage-id cp)
             (codepage-name cp))))
+
+
+;;; Codepage construction and handling functions.
+
+(defparameter *codepages* (make-dict)
+  "The codepage table.")
+
+
+(defun make-codepage (&rest keys &key &allow-other-keys)
+  (let ((cp (apply #'%make-cp keys)))
+    (setf (gethash (codepage-id cp) *codepages*) cp)))
+
+
+(defun get-codepage (cp-id)
+  (gethash cp-id *codepages*))
+
+
+(defun remove-codepage (cp-id)
+  (remhash cp-id *codepages*))
+
+
+(defun list-codepages ()
+  (dict-values *codepages*))
+
+
+(defun clean-codepages ()
+  (clrhash *codepages*))
 
 
 ;;; decode-ebcdic
