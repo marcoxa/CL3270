@@ -4,7 +4,7 @@
 ;;;;
 ;;;; Setting up the CL3270 system.
 ;;;; This is where some of the key global variables are created, in
-;;;; particular, those relevan for locating certain bits and pieces of
+;;;; particular, those relevant for locating certain bits and pieces of
 ;;;; the system.
 ;;;;
 ;;;; See the file COPYING for copyright and licensing information.
@@ -15,8 +15,9 @@
 ;;; setup-source-pathname
 ;;;
 ;;; Thanks to David Cooper for this nifty trick.  It is needed to
-;;; circument COMPILE-FILE output changes, which is what ASDF and MK
-;;; essentially do.
+;;; circumvent COMPILE-FILE output changes, which is what ASDF and MK
+;;; essentially do.  The macro call freezes the right pathname in the
+;;; code. 
 
 (defmacro setup-source-pathname ()
   "Substitute the truename of the 'setup.lisp' in the code."
