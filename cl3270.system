@@ -22,16 +22,24 @@ which can be found at
                (:file "setup"    :depends-on ("cl3270-pkg"))
                (:file "bytes"    :depends-on ("cl3270-pkg" "setup"))
                ;; (:file "ebcdic-ascii" :depends-on ("cl3270-pkg" "bytes"))
-               (:file "ebcdic"   :depends-on ("bytes"))
                (:file "util"     :depends-on ("cl3270-pkg" "setup"))
                (:file "debug"    :depends-on ("cl3270-pkg" "setup"))
-               (:file "codepage" :depends-on ("bytes"))
+               (:file "codepage" :depends-on ("bytes" "util"))
+
+               (:file "ebcdic"   :depends-on ("bytes" "codepage" "codepages"))
+               
                (:file "device"   :depends-on ("cl3270-pkg" "setup"))
+
+               (:file "codes"    :depends-on ("cl3270-pkg" "setup"))
+
                ;; (:file "telnet"   :depends-on ("ebcdic-ascii" "device" "bytes" "util" "debug"))
                ;; (:file "response" :depends-on ("ebcdic-ascii" "telnet"))
                (:file "telnet"
-                :depends-on ("ebcdic" "device" "bytes" "util" "debug"))
-               (:file "response" :depends-on ("ebcdic" "telnet"))
+                ;; :depends-on ("ebcdic" "device" "bytes" "util" "debug")
+                :depends-on ("response" "ebcdic" "device" "bytes" "util" "debug")
+                )
+               ;; (:file "response" :depends-on ("ebcdic" "telnet"))
+               (:file "response" :depends-on ("ebcdic"))
                (:file "screen"   :depends-on ("telnet" "response"))
                (:file "looper"   :depends-on ("screen"))
                (:module "codepages"
