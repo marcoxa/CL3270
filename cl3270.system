@@ -32,16 +32,14 @@ which can be found at
 
                (:file "codes"    :depends-on ("cl3270-pkg" "setup"))
 
-               ;; (:file "telnet"   :depends-on ("ebcdic-ascii" "device" "bytes" "util" "debug"))
-               ;; (:file "response" :depends-on ("ebcdic-ascii" "telnet"))
                (:file "telnet"
-                ;; :depends-on ("ebcdic" "device" "bytes" "util" "debug")
-                :depends-on ("response" "ebcdic" "device" "bytes" "util" "debug")
+                :depends-on ("ebcdic" "codes" "device" "bytes" "util" "debug")
                 )
-               ;; (:file "response" :depends-on ("ebcdic" "telnet"))
-               (:file "response" :depends-on ("ebcdic"))
-               (:file "screen"   :depends-on ("telnet" "response"))
+
+               (:file "response" :depends-on ("ebcdic" "codes" "telnet"))
+               (:file "screen"   :depends-on ("telnet" "response" ))
                (:file "looper"   :depends-on ("screen"))
+               (:file "transactions" :depends-on ("device"))
                (:module "codepages"
                 :components ((:file "cp310")
                              (:file "cpbracket" :depends-on ("cp310"))
