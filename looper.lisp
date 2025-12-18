@@ -144,7 +144,7 @@ CONN -- the network connection to the 3270 client.
         (my-vals (make-hash-table :test #'equal))
         )
 
-    (dbgmsg ">>> HANDLE-SCREEN: saving values and fields.~%")
+    (dbgmsg "HANDLE-SCREEN: saving values and fields.~%")
 
     (dolist (f (screen-fields screen))
       (when (not (string= "" (field-name f)))
@@ -157,7 +157,7 @@ CONN -- the network connection to the 3270 client.
     (loop for f being the hash-key of vals using (hash-value v)
           do (setf (gethash f my-vals) v))
 
-    (dbgmsg ">>> HANDLE-SCREEN: saved values and fields.~%")
+    (dbgmsg "HANDLE-SCREEN: saved values and fields.~%")
 
 
     ;; The tagbodies and the GOs are probably fixable in a better way,
@@ -201,7 +201,7 @@ CONN -- the network connection to the 3270 client.
          (unless (aid-in-set (response-aid resp) pf-keys)
            (unless (or (is-clear-key (response-aid resp))
                        (is-attention-key (response-aid resp)))
-             (setf my-vals (merge-field-values my-vals (response-values resp))))
+             (setf my-vals (merge-field-values my-vals (response-vals resp))))
            (setf (gethash error-field my-vals)
                  (format nil "~S: unknown key"
                          (aid-to-string (response-aid resp))))
@@ -215,7 +215,7 @@ CONN -- the network connection to the 3270 client.
                    (is-attention-key (response-aid resp)))
            (return-from handle-screen (values resp nil)))
 
-         (setq my-vals (merge-field-values my-vals (response-values resp)))
+         (setq my-vals (merge-field-values my-vals (response-vals resp)))
          (remhash error-field my-vals)
 
          ;; Now we can validate each field, if we must
