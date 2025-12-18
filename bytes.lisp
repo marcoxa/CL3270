@@ -1,4 +1,4 @@
-;;;; -*- Mode: Lisp -*-
+;;;; -*- Mode: Lisp: Coding: utf-8 -*-
 
 ;;;; bytes.lisp --
 ;;;;
@@ -36,16 +36,14 @@ Often these vectors have a fill pointer and are adjustable."
 
 (declaim (inline make-buffer))
 (defun make-buffer (&key (length 0)
-                         (capacity 2048) ; A bit more than 80 * 24.
+                         (capacity 5280) ; 132 * 40.
                          )
   (declare (type (integer 0 (#.array-total-size-limit)) length)
            (type (integer 1 (#.array-total-size-limit)) capacity))
   (assert (<= length capacity))
   (make-array capacity
-              ;; :element-type '(unsigned-byte 8)
               :element-type 'octet
               :initial-element 0
-              ;; :fill-pointer (min length (max 1 (1- capacity))) ; Being paranoid.
               :fill-pointer length
               ))
 
@@ -53,12 +51,13 @@ Often these vectors have a fill pointer and are adjustable."
 (declaim (ftype (function (buffer octet) buffer) write-buffer)
          (inline write-buffer))
 (defun write-buffer (buffer b)
-  "Write a (unsigned) byte B at the end of BUFFER.
+  "Write a (unsigned) byte, an octet, B at the end of BUFFER.
 
 The 'end' of BUFFER is actually its FILL-POINTER; that is, BUFFER must
 be a vector with a FILL-POINTER.
 
 The (modified) BUFFER is returned."
+
   (declare (type buffer buffer)
            (type unsigned-byte b))
   (vector-push b buffer)
@@ -74,11 +73,31 @@ The 'end' of BUFFER is actually its FILL-POINTER; that is, BUFFER must
 be a vector with a FILL-POINTER.
 
 The (modified) BUFFER is returned."
+
   (declare (type vector bs)
            (type buffer buffer))
-  (loop for b of-type unsigned-byte across bs
+  (loop for b of-type octet across bs
         do (vector-push b buffer))
   buffer)
 
+
+(declaim (ftype (function (buffer &rest octet) buffer) write-octects-buffer)
+         (inline write-octects-buffer))
+(defun write-octects-buffer (buffer &rest octets)
+  "Appends OCTETS at the end of BUFFER.
+
+OCTETS is a list of OCTET.
+The 'end' of BUFFER is actually its FILL-POINTER; that is, BUFFER must
+be a vector with a FILL-POINTER.
+
+The (modified) BUFFER is returned."
+
+  (declare (type list octets)
+           (type buffer buffer))
+
+  (loop for b of-type octet in octets
+        do (vector-push b buffer))
+  buffer)
+  
 
 ;;;; end of file -- bytes.lisp
