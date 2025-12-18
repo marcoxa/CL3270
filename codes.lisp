@@ -154,7 +154,7 @@ or confirmation that you are no
 longer expecting the other party
 to perform, the indicated option.")
 
-(def-telnet-code +IAC+ 255
+(def-telnet-code +iac+ 255
                  "Data Byte 255.")
 
 
@@ -266,6 +266,11 @@ to perform, the indicated option.")
       (<= +aid-pf13+ b +aid-pf21+)
       (<= +aid-pf22+ b +aid-pf24+))
   )
+
+
+(defmacro is-key (k1 k2)
+  `(= ,k1 ,k2))
+
 
 (declaim
  (ftype (function (aid) boolean)
