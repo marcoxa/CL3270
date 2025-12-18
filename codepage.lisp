@@ -80,30 +80,84 @@ Of course, vendors messed up, as the Wikipedia page explains."
             (codepage-name cp))))
 
 
-;;; Codepage construction and handling functions.
+;;; Codepage construction and handling functions etc.
 
-(defparameter *codepages* (make-dict)
+(defparameter *codepages* (make-dict :test #'equal)
   "The codepage table.")
 
 
+(define-condition no-codepage-error (error)
+  ((id :reader no-codepage-error-id
+       :initarg :id
+       :initform 0
+       :type codepage-id))
+  (:report (lambda (nce stream)
+             (format stream "codepage ~d is unknown."
+                     (no-codepage-error-id nce))))
+  (:documentation
+   "The No Codpage Error Condition.
+
+This error is signaled when codepage ID (initarg :ID) was not found in
+the internal data structures.
+
+See Also:
+
+*CODEPAGES* hash table."))
+
+
 (defun make-codepage (&rest keys &key &allow-other-keys)
+  "Create a CODEPAGE and inserts it isn the internal data structures.
+
+KEYS are passed to the internal CODEPAGE constructor.
+
+See Also:
+
+*CODEPAGES*."
+
   (let ((cp (apply #'%make-cp keys)))
     (setf (gethash (codepage-id cp) *codepages*) cp)))
 
 
-(defun get-codepage (cp-id)
-  (gethash cp-id *codepages*))
+(defun get-codepage (cp-id &optional (errorp t))
+  "Get a CODEPAGE given an identified CP-ID.
+
+Exceptional Situations:
+
+If ERRORP is non-NIL (the default) and codepage CP-ID is not found,
+then a NO-CODEPAGE-ERROR is signaled.
+
+See Also:
+
+*CODEPAGES*."
+
+  (multiple-value-bind (cp cp-found)
+      (gethash cp-id *codepages*)
+    (cond (cp-found (values cp t))
+          ((null errorp) (values nil nil))
+          (t (error 'no-codepage-error :id cp-id)))))
 
 
 (defun remove-codepage (cp-id)
+  "Remove codepage CP-ID from the iternal data structures."
+
   (remhash cp-id *codepages*))
 
 
 (defun list-codepages ()
+  "Return a list of the known codepages."
   (dict-values *codepages*))
 
 
 (defun clean-codepages ()
+  "Clean the internal codepage repository.
+
+Notes:
+
+Codepages that are values of variables are not affected.
+
+See Also:
+
+*CODEPAGES*."
   (clrhash *codepages*))
 
 
@@ -189,7 +243,7 @@ The encoding will handle graphic escape to CP310 as needed."
           for cc = (char-code c)
 
           initially (progn ec-p ge) ; Will it work?
-          do (cond ((< cc u2e-len) (write-buffer out (aref cc u2e)))
+          do (cond ((< cc u2e-len) (write-buffer out (aref u2e cc)))
 
                    ((nth 1 (setf (values ec ec-p) (gethash cc high2e)))
                     (write-buffer out ec))
