@@ -1,4 +1,4 @@
-;;;; -*- Mode: Lisp; Coding: UTF-8 -*-
+;;;; -*- Mode: Lisp; Coding: utf-8 -*-
 
 ;;;; generate.lisp
 ;;;;
@@ -325,7 +325,7 @@ this is useful for debugging purposes.
                              :element-type 'character
                              :external-format :utf-8
                              )
-          (format cps ";;;; -*- Mode: Lisp; Coding: UTF-8 -*-~2%")
+          (format cps ";;;; -*- Mode: Lisp; Coding: utf-8 -*-~2%")
           (format cps ";;;; ~A.~A~2%"
                   (pathname-name cp-pathname)
                   (pathname-type cp-pathname))
@@ -500,15 +500,36 @@ defintion facilities like ASDF."
         (declare (type pathname cpcfp)
                  (type (or null integer) cpfwd cpcfpwd))
 
+        (format t "~&;;; CL3270: source file '~A.~A' ~D~%"
+                (pathname-name cpf)
+                (pathname-type cpf)
+                cpfwd)
+
+        (format t "~&;;; CL3270: output file '~A.~A' ~D~%"
+                (pathname-name cpcfp)
+                (pathname-type cpcfp)
+                cpcfpwd)
+
         (cond ((and (probe-file cpcfp)
                     cpfwd
                     cpcfpwd
-                    (< cpfwd cpcfpwd))
-               (load cpcfp))
+                    (<= cpfwd cpcfpwd))
+               
+               (format t "~&;;; CL3270: loading '~A.~A'.~%"
+                       (pathname-name cpcfp)
+                       (pathname-type cpcfp))
+               (load cpcfp :verbose t))
 
-          ((null (probe-file cpcfp))
-           (compile-file cpf)
-           (load cpcfp))
+          ((or (null (probe-file cpcfp))
+               (> cpfwd cpcfpwd))
+           (format t "~&;;; CL3270: compiling '~A.~A'.~%"
+                   (pathname-name cpf)
+                   (pathname-type cpf))
+           (compile-file cpf :verbose t)
+           (format t "~&;;; CL3270: loading '~A.~A'.~%"
+                   (pathname-name cpf)
+                   (pathname-type cpf))
+           (load cpcfp :verbose t))
 
           ((or (null cpfwd) (null cpcfpwd))
            (warn "CL3270: cannot determine write dates for '~A'."
@@ -533,8 +554,7 @@ defintion facilities like ASDF."
 
         (format t "~&;;; CL3270: compiling and/or loading codepages...~2%")
         (dolist (cp-file *cl3270-code-page-pathnames*)
-          (format t "~&;;; CL3270: compiling and/or loading '~A'.~%"
-                  (pathname-name cp-file))
+          
           (compile-load-code-page-file cp-file))
 
         (format t "~%;;; CL3270: codepages setup complete.~2%"))
