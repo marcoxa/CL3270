@@ -19,10 +19,10 @@
 
 Minimal information about the device, i.e., the 3270 terminal."
 
-  (rows 0 :type (mod 1024))		; Let's exaggerate!
+  (rows 0 :type (mod 1024)) ; Let's exaggerate!
   (cols 0 :type (mod 1024))
   (term-type "IBM 3270" :type string)
-  (codepage nil)			; FTTB.
+  (codepage nil :type (or null codepage)) ; FTTB.
   )
 
 
