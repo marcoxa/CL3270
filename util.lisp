@@ -59,7 +59,7 @@ The value -1 is used to indicate invalid positions."
 (defun octets-to-string (octets)
   "Create a string from OCTETS, which is a vector of bytes."
 
-  (declare (type (vector unsigned-byte *) octets))
+  (declare (type (vector octet *) octets))
 
   ;; Assume bytes code for (ASCII) characters with no encoding.
   ;; Note that declaring (vector (unsigned-byte 8) *) is too strict
