@@ -55,13 +55,22 @@
    (make-field :row 8 :col 12 :content "to enter your name again or")
    (make-field :row 8 :col 41 :intense t :Content "PF3")
    (make-field :row 8 :col 45 :content "to quit and disconnect.")
-   (make-field :row 11 :Col 0 :color +turquoise+ :highlighting +reversevideo+
+   (make-field :row 11 :Col 0 :color +turquoise+ :highlighting +reverse-video+
                :content "Here is a field with extended attributes.")
    (make-field :row 11 :col 42) ; Remember to "stop" fields with a
                                 ; regular field to clear the reverse
                                 ; video for example.
    (make-field :row 22 :col 0 :content "PF3 Exit")
    ))
+
+
+(defparameter goodbye-screen
+  (make-screen
+   (make-field :row 0 :col 0 :intense t
+               :content "3270 Example Application")
+   (make-field :row 2 :col 0
+               :content "Thank you for using this application. Goodbye.")))
+
 
 
 #| Possible alternative
@@ -80,15 +89,16 @@
       (usocket:with-socket-listener (conn host 3270
                                           :element-type '(unsigned-byte 8)
                                           )
-        (format t ">>> CL3270 server listening on host ~S, port 3270...~%"
+        (format t "CL3270: server listening on host ~S, port 3270...~%"
                 host)
         (usocket:with-connected-socket (c (usocket:socket-accept conn))
           (let ((*do-debug* debug))
             (funcall handler c))))
-    (format t ">>> CL3270 server closed~%")))
+    (format t "CL3270: server closed~%")))
 
 
 
+#|
 (defun cl3270-handle (c &aux (field-values (make-hash-table :test #'equal)))
   ;; C is a USOCKET:SOCKET
   (unwind-protect
@@ -167,7 +177,8 @@
                  (multiple-value-bind (resp err)
                      (show-screen screen2 field-values 0 0 c)
                    (when err
-                     (format *error-output* "!!! SHOW-SCREEN 2 error ~S~%." err)
+                     (format *error-output*
+                             "CL3270: error: SHOW-SCREEN 2 error ~S~%." err)
                      (return-from mainloop err))
 
                    (when (= (response-aid resp) +aid-pf3+)
@@ -176,8 +187,131 @@
                ))
         )
     (usocket:socket-close c)
-    (dbgmsg ">>> Connection closed.~%"))
+    (dbgmsg "CL3270: connection closed.~%"))
   )
+|#
+
+
+(defun cl3270-handle (c &aux (field-values (make-hash-table :test #'equal)))
+  ;; C is a USOCKET:SOCKET
+
+  (declare (type usocket:stream-usocket c))
+
+  (handler-case
+      (multiple-value-bind (devinfo err)
+          (negotiate-telnet c)
+
+        (when err
+          (format *error-output* "CL3270: error: ~S~%" err)
+          (return-from cl3270-handle nil))
+
+        (dbgmsg "CL3270: telnet negotiated.~2%")
+
+        (loop named mainloop do
+              (tagbody
+               start-screen1-loop
+               (loop do
+                     (setf (gethash "password" field-values) "")
+                     (multiple-value-bind (resp err)
+                         (show-screen-opts screen1
+                                           field-values
+                                           c
+                                           (make-screen-opts
+                                            :codepage (codepage devinfo)
+                                            :cursor-row 4
+                                            :cursor-col 20))
+
+                       (when err
+                         (format *error-output*
+                                 "CL3270: error SHOW-SCREEN 1 error ~S~%" err)
+                         ;; (return-from cl3270-handle err)
+                         (error err))
+                                                
+                       (when (= (response-aid resp) +aid-pf3+)
+                         (show-screen-opts goodbye-screen
+                                           nil
+                                           c
+                                           (make-screen-opts
+                                            :codepage (codepage devinfo)
+                                            :no-response t))
+                         (sleep 2)
+                         (return-from mainloop t))
+                         
+                       (when (/= (response-aid resp) +aid-enter+)
+                         (go start-screen1-loop))
+
+                       ;; User must have pressed "Enter", so let's
+                       ;; check the input.
+
+                       (setf field-values (response-vals resp))
+                       (let ((fname
+                              (string-trim " "
+                                           (gethash "fname" field-values)))
+                             (lname
+                              (string-trim " "
+                                           (gethash "lname" field-values)))
+                             )
+                         (when (and (string= "" fname)
+                                    (string= "" lname))
+                           (setf (gethash "errormsg" field-values)
+                                 "First and Last Name fields are required.")
+                           (go start-screen1-loop))
+
+                         (when (string= "" fname)
+                           (setf (gethash "errormsg" field-values)
+                                 "First Name field is required.")
+                           (go start-screen1-loop))
+
+                         (when (string= "" lname)
+                           (setf (gethash "errormsg" field-values)
+                                 "Last Name field is required.")
+                           (go start-screen1-loop))
+
+
+                         ;; At this point, we know the user provided
+                         ;; both fields and had hit enter, so we are
+                         ;; going to reset the error message for the
+                         ;; next time through the loop, and break out
+                         ;; of this loop so we move on to screen 2.
+
+                         (setf (gethash "errormsg" field-values) "")
+                         (loop-finish)
+                         )))
+
+               ;; Now we're ready to display screen2
+               (let ((password-length
+                      (length (string-trim " "
+                                           (gethash "password" field-values))))
+                     )
+
+                 (setf (gethash "passwordOutput" field-values)
+                       (format nil
+                               "Your password was ~D character~:P long."
+                               password-length))
+
+                 (multiple-value-bind (resp err)
+                     (show-screen screen2 field-values 0 0 c)
+                   (when err
+                     (format *error-output*
+                             "CL3270: error: SHOW-SCREEN 2 error ~S~%." err)
+                     (return-from mainloop err))
+
+                   (when (= (response-aid resp) +aid-pf3+)
+                     (return-from mainloop t))
+                   ))
+               ))
+        )
+
+    (error (e)
+      (usocket:socket-close c)
+      (dbgmsg "CL3270: connection closed.~%")
+      (error e))
+
+    (:no-error (result)
+      (usocket:socket-close c)
+      (dbgmsg "CL3270: closing connection and returning ~S.~%" result)
+      result)
+    ))
 
 
 ;;;; end of file -- example1.lisp
