@@ -1,144 +1,67 @@
-;;;; -*- Mode: Lisp -*-
+;;;; -*- Mode: Lisp; Coding: utf-8 -*-
 
 ;;;; ebcdic.lisp
 ;;;;
 ;;;; EBCDIC <-> ASCII mincing.
 ;;;;
 ;;;; See the file COPYING for copyright and licensing information.
-
 ;;;; To do: deal with code pages.
+;;;;
+;;;; Instances of CODEPAGE provide EBCDIC<->UTF-8 translation. By default,
+;;;; CL3270 is configured to use CP 1047. You may alternatively set a different
+;;;; codepage using the SET-CODEPAGE function during your application
+;;;; initialization.
+;;;;
+;;;; Notes:
+;;;;
+;;;; Matthew Wilson's original note.
+;;;;
+;;;; After careful consideration, I have decided that the default code page we
+;;;; will support for EBCDIC is IBM CP 1047. Other code pages may be globally
+;;;; selected with the SetCodepage() function.
+;;;;
+;;;; In suite3270 (e.g. c3270/x3270), the default code page is what it calls
+;;;; "brackets". This is CP37 with the [, ], Ý, and ¨ characters swapped around.
+;;;; This ends up placing all four of those characters in the correct place for
+;;;; 1047 (and thus they will all work correctly with go3270 by default).
+;;;; HOWEVER, the ^ and ¬ characters are swapped relative to CP1047. (Or, more
+;;;; succinctly, you could say the suite3270 "brackets" codepage is CP1047 with
+;;;; the ^ and ¬ characters swapped back to where they are in CP37). If you plan
+;;;; on using the ^ and ¬ characters, run c/x3270 in proper 1047 mode,
+;;;; `c3270-codepage 1047` or make it your default by setting the
+;;;; `c3270.codePage` resource to `1047` in your `.c3270pro` file, for example.
+;;;;
+;;;; In Vista TN3270, "United States" is the default code page. This is CP1047
+;;;; and will map 100% correctly.
+;;;;
+;;;; In IBM PCOMM, CP37 is the default. For correct mapping of [, ], Ý, ¨, ^,
+;;;; and ¬, you must switch the session parameters from "037 United States" to
+;;;; "1047 United States".
 
 (in-package "CL3270")
 
-#|
-(defstruct codepage
-  (id 0 :type fixnum :read-only t)
-  (name "" :type string :read-only t)
-  )
-|#
+
+;;; *default-codepage*
+
+(defparameter *default-codepage*
+  (if (boundp '*codepage-1147*)
+      *codepage-1147*
+      *codepage-bracket*)
+  "The current default codepage.")
 
 
-(deftype char-byte-code ()
-  'octet)
+;;; set-codepage
+
+(defun set-codepage (cp-designator)
+  (setq *default-codepage*
+        (etypecase cp-designator
+          (codepage cp-designator)
+          (codepage-id (let ((cp (get-codepage cp-designator)))
+                         (if cp
+                             cp
+                             (error "CL3270: cannot find codepage ~D."
+                                    cp-designator))))
+          )))
 
 
-(defvar ebcdic-037
-  (make-array 256
-              :element-type 'char-byte-code
-              :initial-contents
-              '(0 1 2 3 55 45 46 47 22 5 37 11 12 13 14 15 16 17 18 19
-                  60 61 50 38 24 25 63 39 28 29 30 31 64 90 127 123 91 108
-                  80 125 77 93 92 78 107 96 75 97 240 241 242 243 244 245
-                  246 247 248 249 122 94 76 126 110 111 124 193 194 195 196
-                  197 198 199 200 201 209 210 211 212 213 214 215 216 217 226
-                  227 228 229 230 231 232 233 74 224 90 95 109 121 129 130
-                  131 132 133 134 135 136 137 145 146 147 148 149 150 151 152
-                  153 162 163 164 165 166 167 168 169 192 106 208 161 7 32
-                  33 34 35 36 21 6 23 40 41 42 43 44 9 10 27 48 49 26 51
-                  52 53 54 8 56 57 58 59 4 20 62 225 65 66 67 68 69 70 71
-                  72 73 81 82 83 84 85 86 87 88 89 98 99 100 101 102 103
-                  104 105 112 113 114 115 116 117 118 119 120 128 138 139 140
-                  141 142 143 144 154 155 156 157 158 159 160 170 171 172 173
-                  174 175 176 177 178 179 180 181 182 183 184 185 186 187 188
-                  189 190 191 202 203 204 205 206 207 218 219 220 221 222 223
-                  234 235 236 237 238 239 250 251 252 253 254 255
-                  ))
-  "Each index in this array is the ASCII (codepage 37) value and the value
-at the index is the corresponding EBCDIC value."
-  )
-
-
-(defvar ascii-037
-  (make-array 256
-              :element-type 'char-byte-code
-              :initial-contents
-              '(0 1 2 3 156 9 134 127 151 141 142 11 12 13 14 15
-                  16 17 18 19 157 133 8 135 24 25 146 143 28 29 30 31
-                  128 129 130 131 132 10 23 27 136 137 138 139 140 5 6 7
-                  144 145 22 147 148 149 150 4 152 153 154 155 20 21 158 26
-                  32 160 161 162 163 164 165 166 167 168 91 46 60 40 43 33
-                  38 169 170 171 172 173 174 175 176 177 33 36 42 41 59 94
-                  45 47 178 179 180 181 182 183 184 185 124 44 37 95 62 63
-                  186 187 188 189 190 191 192 193 194 96 58 35 64 39 61 34
-                  195 97 98 99 100 101 102 103 104 105 196 197 198 199 200
-                  201 202 106 107 108 109 110 111 112 113 114 203 204 205 206
-                  207 208 209 126 115 116 117 118 119 120 121 122 210 211 212
-                  213 214 215 216 217 218 219 220 221 222 223 224 225 226 227
-                  228 229 230 231 123 65 66 67 68 69 70 71 72 73 232 233
-                  234 235 236 237 125 74 75 76 77 78 79 80 81 82 238 239
-                  240 241 242 243 92 159 83 84 85 86 87 88 89 90 244 245
-                  246 247 248 249 48 49 50 51 52 53 54 55 56 57 250 251 252
-                  253 254 255))
-  "Each index in this array is the EBCDIC (codepage 37) value and the value
-at the index is the corresponding ASCII value."
-  )
-
-
-(declaim (inline ebcdic))
-
-(defun ebcdic (ascii-code &optional (codepage 37))
-  (declare (type char-byte-code ascii-code)
-           (ignore codepage)) ; FTTB
-  (aref ebcdic-037 ascii-code))
-
-
-(declaim (inline ascii))
-
-(defun ascii (ebcdic-code &optional (codepage 37))
-  (declare (type char-byte-code ebcdic-code)
-           (ignore codepage)) ; FTTB
-  (aref ascii-037 ebcdic-code))
-
-
-(defun to-ascii (ebcdic-vector
-                 &optional (codepage 37)
-                 &aux
-                 (len (length ebcdic-vector))
-                 (ascii-vector (make-array len
-                                           :element-type 'char-byte-code))
-                 )
-  (declare (type (vector char-byte-code)
-                 ebcdic-vector
-                 ascii-vector)
-           (type fixnum len))
-
-  (dotimes (i len ascii-vector)
-    (setf (aref ascii-vector i)
-          (ascii (aref ebcdic-vector i) codepage)))
-  )
-
-
-(defun to-ebcdic (ascii-vector
-                  &optional (codepage 37)
-                  &aux
-                  (len (length ascii-vector))
-                  (ebcdic-vector (make-array len
-                                             :element-type 'char-byte-code))
-                  )
-  (declare (type (vector char-byte-code)
-                 ebcdic-vector
-                 ascii-vector)
-           (type fixnum len))
-
-  (dotimes (i len ebcdic-vector)
-    (setf (aref ebcdic-vector i)
-          (ebcdic (aref ascii-vector i) codepage))) ; Asymmetry.
-  )
-
-
-(defun char-codes (s)
-  (declare (type string s))
-  (map 'vector #'char-code s))
-
-
-(defun code-chars (s)
-  (declare (type (vector char-byte-code) s))
-  (map 'vector #'code-char s))
-
-
-(declaim (inline chars-to-string))
-(defun chars-to-string (cv)
-  (declare (type vector cv)) ; (vector character) seems to confuse at least LW.
-  (coerce cv 'string))
-
-;;;; end of file -- ebcdic-ascii.lisp
+;;;; end of file -- ebcdic.lisp
