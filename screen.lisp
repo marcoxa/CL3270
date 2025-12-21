@@ -60,13 +60,23 @@
   (numeric-only nil :type boolean)
   (color +default-color+ :type color)
   (highlighting +default-highlight+ :type highlight)
-  (name nil :type (or null string))
+  (name "" :type string)
   (keepspaces nil :type boolean)
   )
 
+
+(defmethod print-object ((f field) stream)
+  (print-unreadable-object (f stream)
+    (format stream "FIELD ~S (~D ~D) ~S"
+            (field-name f)
+            (field-row f)
+            (field-col f)
+            (field-content f))))
+
 ;;; screen
 
-(defstruct (screen (:constructor make-screen (&rest fields)))
+(defstruct (screen (:constructor make-screen (name &rest fields)))
+  (name "" :type string)
   (fields () :type list))
 
 
@@ -142,13 +152,21 @@ to the 3270 client."
 ;;; another thread that could layout the user input fields
 ;;; differently.
 
-(defun show-screen-opts (screen vals conn opts &aux (resp (make-response)))
+(defun show-screen-opts (screen vals conn opts
+                                &aux
+                                fm
+                                err
+                                (resp (make-response)))
   (declare (type screen screen)
-           (type dict vals)
+           (type (or null dict) vals)
            (type usocket:stream-usocket conn)
-           (type screen-opts opts))
+           (type screen-opts opts)
+           (type response resp))
+  
 
-  (multiple-value-bind (fm err)
+  (dbgmsg "SCO: showing screen ~S~%" (screen-name screen))
+
+  (multiple-value-setq (fm err)
       (show-screen-internal screen
                             vals
                             (screen-opts-cursor-row opts)
@@ -156,40 +174,62 @@ to the 3270 client."
                             conn
                             (not (screen-opts-no-clear opts))
                             (screen-opts-altscreen opts)
-                            (screen-opts-codepage opts))
+                            (screen-opts-codepage opts)))
+  (when err
+    (dbgmsg "SCO: error from SHOW-SCREE-INTERNAL~%")
+    (return-from show-screen-opts (values resp err)))
+
+  (when (screen-opts-post-send-callback opts)
+    (when (setf err
+                (funcall (screen-opts-post-send-callback opts)
+                         (screen-opts-callback-data opts)))
+      (return-from show-screen-opts (values resp err))))
+
+  (unless (screen-opts-no-response opts)
+    ;; (dbgmsg "SCO: reading response.~%")
+    (multiple-value-setq (resp err)
+        (read-response conn
+                       fm
+                       (screen-opts-altscreen opts)
+                       (screen-opts-codepage opts)))
     (when err
+      (dbgmsg "SCO: error reading response: ~S~%" err)
       (return-from show-screen-opts (values resp err)))
 
-    (when (screen-opts-post-send-callback opts)
-      (when (funcall (screen-opts-post-send-callback opts)
-                     (screen-opts-callback-data opts))
-        (return-from show-screen-opts (values resp err))))
+    ;; Strip spaces from field values unless the caller requested
+    ;; that we maintain whitespace.
 
-    (unless (screen-opts-no-response opts)
-      (multiple-value-bind (resp err)
-          (read-response conn
-                         fm
-                         (screen-opts-altscreen opts)
-                         (screen-opts-codepage opts))
-        (when err
-          (return-from show-screen-opts (values resp err)))
-
-        ;; Strip spaces from field values unless the caller requested
-        ;; that we maintain whitespace.
-
-        (dolist (fld (screen-fields screen))
-          (unless (field-keepspaces fld)
-            (let ((found
-                   (nth-value 1
-                              (gethash (field-name fld)
-                                       (response-vals resp)))))
-              (when found
-                (setf (gethash (field-name fld) (response-vals resp))
-                      (string-trim " "
-                                   (gethash (field-name fld)
-                                            (response-vals resp))))))))
-        ))
-    (values resp nil)))
+    ;; (dbgmsg "SCO: munging fields.~%")
+    (dolist (fld (screen-fields screen))
+      #|
+      (dbgmsg "SCO: field ~S keepspaces ~S~%"
+              fld
+              (field-keepspaces fld)
+              )
+      (dbgmsg "SCO: fn ~S resp-vals ~S found ~S~%"
+              (field-name fld)
+              (response-vals resp)
+              (multiple-value-list (gethash (field-name fld) (response-vals resp)))
+              )
+      |#
+      (unless (field-keepspaces fld)
+        (let ((found
+               (nth-value 1
+                          (gethash (field-name fld)
+                                   (response-vals resp)))))
+          #|
+          (dbgmsg "SCO: found ~S ~S~%"
+                  found
+                  (multiple-value-list (gethash (field-name fld) (response-vals resp))))
+          |#
+          (when found
+            (setf (gethash (field-name fld) (response-vals resp))
+                  (string-trim " "
+                               (gethash (field-name fld)
+                                        (response-vals resp))))))))
+    )
+  (dbgmsg "SCO: returning ~S~%" resp)
+  (values resp nil))
 
 
 ;;; show-screen
@@ -228,7 +268,7 @@ encountered.
 
 (defun show-screen-internal (screen vals crow ccol conn clear dev cp)
   (declare (type screen screen)
-           (type dict vals)
+           (type (or null dict) vals)
            (type row-index crow)
            (type col-index ccol)
            (type usocket:usocket conn)
@@ -237,9 +277,13 @@ encountered.
            (type (or null codepage) cp)
            )
 
+  (dbgmsg "SCI: starting~%")
+
   (unless cp
     (setq cp *default-codepage*))
 
+  ;; (dbgmsg "SCI: codepage ~S~%" cp)
+  
   (let ((rows 24)
         (cols 80)
         (b (make-buffer))
@@ -249,34 +293,58 @@ encountered.
     (when dev
       (setf (values rows cols) (alt-dimensions dev)))
 
+    ;; (dbgmsg "SCI: rows ~S cols S~%" rows cols)
+
     (if clear
         (if (not (and (= rows 24) (= cols 80)))
-            (write-buffer b #x7E)
-            (write-buffer b #xF5))
-        (write-buffer b #xF1))
+            (write-buffer b #x7E)  ; Erase/Write Alternate to terminal.
+            (write-buffer b #xF5)) ; Erase/Write to terminal.
+        (write-buffer b #xF1)) ; Write to terminal.
 
 
     (if clear
-        (write-buffer b #xC3)
-        (write-buffer b #xC2))
+        (write-buffer b #xC3)  ; WCC = Reset, Unlock Keyboard, Reset MDT.
+
+        ;; Don't clear modified data tag if we're not clearing the
+        ;; screen; we still want the client to send any data a user
+        ;; has modified in fields.
+
+        (write-buffer b #xC2)) ; WCC = Reset, Unlock Keyboard (*no* reset MDT).
+
+    ;; Now build the commands for each field on the screen.
 
     (dolist (fld (screen-fields screen))
       (let ((frow (field-row fld))
             (fcol (field-col fld))
             )
 
+        ;; (dbgmsg "SCI: field ~S~%" fld)
         (unless (or (minusp frow) (>= frow rows)
                     (minusp fcol) (>= fcol cols))
           
+          ;; (dbgmsg "SCI: sbs ~S field S~%" (sba frow fcol cols) (build-field fld))
+
           (write-buffer* b (sba frow fcol cols))
           (write-buffer* b (build-field fld)) ; Double check this!
 
+          ;; (dbgmsg "SCI: buffer ~S~%" b)
+
           (let ((content (field-content fld)))
-            (when (string/= (field-name fld) "")
+
+            #|
+            (dbgmsg "SCI: field-name ~S field-content ~S vals ~S~%"
+                    (field-name fld)
+                    content
+                    vals)
+            |#
+
+            (when (and vals (field-name fld) (string/= (field-name fld) ""))
               (multiple-value-bind (v found)
                   (gethash (field-name fld) vals)
                 (when found
                   (setf content v))))
+
+            ;; (dbgmsg "SCI: content ~S~%" content)
 
             (when (string/= content "")
               (write-buffer* b (encode-characters cp content))
@@ -297,12 +365,21 @@ encountered.
     (write-buffer b +iac+)
     (write-buffer b +eor+)
 
+    #|
     (let ((*print-base* 2))
-      (dbgmsg "sending datastream ~S~%" b))
+      (dbgmsg "sending datastream (2) ~S~%" b))
+    (let ((*print-base* 16))
+      (dbgmsg "sending datastream (16) ~S~%" b))
+    (let ((*print-base* 16))
+      (dbgmsg "sending datastream (16) ~S~%"
+              (map 'vector #'telnet-code-name b)))
+    |#
 
     (handler-case
-        (write-sequence b (usocket:socket-stream conn))
+        ;; (write-sequence b (usocket:socket-stream conn))
+        (send-sequence b (usocket:socket-stream conn))
       (error (e)
+        (dbgmsg "SCI: error: sending~%")
         (return-from show-screen-internal (values nil e))))
 
 
@@ -327,6 +404,7 @@ encountered.
                       (paramcount 1))
   (when (and (= (field-color f) +default-color+)
              (= (field-highlighting f) +default-highlight+))
+
     ;; This is a traditional field, issue a normal sf command.
     (write-buffer buf #x1D) ; SF - "start field"
     (write-buffer buf
@@ -336,19 +414,24 @@ encountered.
                                 (field-autoskip f)
                                 (field-numeric-only f)
                                 ))
+    ;; (dbgmsg "BUILD-FIELD: return normal field ~S~%" buf)
+
     (return-from build-field buf))
 
   ;; Otherwise, this needs an extended attribute field.
+  ;; (dbgmsg "BUILD-FIELD: extended attribute field~%")
   (write-buffer buf #x29)
 
   (when (/= (field-color f) +default-color+)
     (incf paramcount))
+
   (when (/= (field-highlighting f) +default-highlight+)
     (incf paramcount))
 
   (write-buffer buf paramcount)
 
   ;; Write the basic field attribute.
+
   (write-buffer buf #xC0)
   (write-buffer buf
                 (sf-attribute (field-write f)
@@ -359,11 +442,13 @@ encountered.
                               ))
 
   ;; Write the highlighting attribute.
+
   (when (/= (field-highlighting f) +default-highlight+)
     (write-buffer buf #x41)
     (write-buffer buf (field-highlighting f)))
 
   ;; Write the color attribute.
+
   (when (/= (field-color f) +default-color+)
     (write-buffer buf #x42)
     (write-buffer buf (field-color f)))
@@ -413,10 +498,10 @@ This function will include the appropriate SBA command."
 
 (defun getpos (row col cols
                    &aux
-                   (result (make-buffer :capacity 2))
+                   (result (make-buffer :capacity 3))
                    (address (+ (* row cols) col))
-                   (hi (ash (logand address #xFC0) -6))
-                   (lo (logand address #x3F))
+                   (hi 0)
+                   (lo 0)
                    )
   "Translate ROW and COL to buffer address control characters."
 
