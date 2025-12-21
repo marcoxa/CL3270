@@ -8,7 +8,7 @@
 
 (in-package "CL3270")
 
-(defparameter *do-debug* t)
+(defparameter *do-debug* nil)
 
 (defun dbgmsg (fmt &rest args)
   (when *do-debug*
