@@ -19,17 +19,19 @@ which can be found at
 
   :components ((:file "cl3270-pkg")
                (:file "setup"    :depends-on ("cl3270-pkg"))
-               (:file "bytes"    :depends-on ("cl3270-pkg" "setup"))
-               ;; (:file "ebcdic-ascii" :depends-on ("cl3270-pkg" "bytes"))
-               (:file "util"     :depends-on ("cl3270-pkg" "setup"))
                (:file "debug"    :depends-on ("cl3270-pkg" "setup"))
+
+               (:file "bytes"    :depends-on ("cl3270-pkg" "setup" "debug"))
+               (:file "util"     :depends-on ("cl3270-pkg" "setup" "debug"))
+
                (:file "codepage" :depends-on ("bytes" "util"))
 
+               ;; (:file "ebcdic-ascii" :depends-on ("cl3270-pkg" "bytes"))
                (:file "ebcdic"   :depends-on ("bytes" "codepage" "codepages"))
 
-               (:file "device"   :depends-on ("cl3270-pkg" "setup"))
+               (:file "device"   :depends-on ("cl3270-pkg" "setup" "debug"))
 
-               (:file "codes"    :depends-on ("cl3270-pkg" "setup"))
+               (:file "codes"    :depends-on ("cl3270-pkg" "setup" "debug"))
 
                (:file "telnet"
                 :depends-on ("ebcdic" "codes" "device" "bytes" "util" "debug")
