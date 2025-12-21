@@ -155,7 +155,7 @@
 
 (defmethod print-object ((r response) stream)
   (print-unreadable-object (r stream :identity t)
-    (format stream "3720: ~A ~D ~D ~S"
+    (format stream "Response 3720: ~A ~D ~D ~S"
             (response-aid r)
             (response-row r)
             (response-col r)
@@ -171,12 +171,18 @@
 
   ;; C is a "connection", i.e., a stream tied to "telnet".
   
-  (dbgmsg "read aid~%")
+  ;; (dbgmsg "READ-AID: read aid~%")
 
   (loop (multiple-value-bind (b valid _ err)
             (telnet-read c nil)
           (declare (ignore _))
           
+          (dbgmsg "READ-AID: got #x~2,'0X (~S) valid ~S err ~S~%"
+                  b
+                  (aid-to-string b)
+                  valid
+                  err)
+
           (when (and (not valid) err)
             (return-from read-aid (values +aid-none+ err)))
 
@@ -185,7 +191,9 @@
                     (is-attention-key b)
                     (is-pf-key b))
             ;; debug
-            (dbgmsg "got AID byte: ~2,'0X~%" b)
+            (dbgmsg "READ-AID: got AID byte: ~2,'0X (~S)~%"
+                    b
+                    (aid-to-string b))
             (return-from read-aid (values b nil)))
 
           ;; debug
@@ -221,13 +229,14 @@ A synonym for HASH-TABLE."
              (type col-index cols))
 
     ;; Read the AID key.
+
     (multiple-value-bind (aid err)
         (read-aid c)
       (when err
         (format *error-output* "CL3270: error: READ-AID error ~S~%" err)
         (return-from read-response (values r err)))
 
-      (dbgmsg "READ-AID ~S ~S~%" aid (telnet-code-name aid))
+      (dbgmsg "READ-RESPONSE: #x~2,'0X ~S~%" aid (aid-to-string aid))
 
       (setf (response-aid r) aid)
 
@@ -268,7 +277,8 @@ A synonym for HASH-TABLE."
         (return-from read-response (values r err)))
       
       (setf (response-vals r) field-values))
-
+    
+    (dbgmsg "READ-RESPONSE: return ~S~%" r)
     (values r nil)
     ))
 
@@ -282,16 +292,20 @@ A synonym for HASH-TABLE."
            (type col-index cols)
            (type (vector octet 2) raw))
 
+  ;; (dbgmsg "READ-POSITION: cols ~D~%" cols)
   (dotimes (i 2)
     (multiple-value-bind (b _ __ err)
         (telnet-read c nil)
       (declare (ignore _ __))
+
       (when err
         (return-from read-position (values 0 0 0 err)))
-      (dbgmsg "READ-POSITION ~D ~2,'0X ~S~%"
+      #|
+      (dbgmsg "READ-POSITION: ~D ~2,'0X ~S~%"
               i
               b
               b)
+      |#
       (setf (aref raw i) b)))
 
   (let* ((addr (decode-buf-addr raw))
@@ -299,7 +313,7 @@ A synonym for HASH-TABLE."
          (row (/ (- addr col) cols))
          )
 
-    (dbgmsg "Got position bytes ~2,'0X ~:*~D ~2,'0X ~:*~D, decoded to ~2,'0X, row ~d col ~d~%"
+    (dbgmsg "READ-POSITION: got position bytes ~2,'0X ~:*~D ~2,'0X ~:*~D, decoded to ~2,'0X, row ~d col ~d~%"
             (aref raw 0)
             (aref raw 1)
             addr
@@ -398,29 +412,43 @@ A synonym for HASH-TABLE."
         (fieldpos 0)
         (vals (make-dict :test #'equalp))
         )
+    (declare (type boolean infield)
+             (type buffer fieldval)
+             (type fixnum fieldpos)
+             (type hash-table vals))
 
     ;; Consume bytes until we get #xFFEF
+
+    ;; (terpri *trace-output*)
+    (dbgmsg "READ-FIELDS: read the fields until #xFFEF~%")
 
     (loop (multiple-value-bind (b _ eor err)
               (telnet-read c t)
             (declare (ignore _))
+
+            ;; (dbgmsg "READ-FIELDS: got ~S (#x~:*~2,'0X) eor ~S err ~S from TR~%" b eor err)
             (when err
+              (dbgmsg "READ-FIELDS: got error ~S~%" err)
               (return-from read-fields (values nil err)))
 
             (cond (eor ; Check for end of data stream (#xFFEF)
                    ;; Finish current field.
+                   ;; (dbgmsg "READ-FIELDS: handling EOR infield ~S~%" infield)
                    (when infield
+                     (dbgmsg "READ-FIELDS: EOR infield ~S ~S~%" cp fieldval)
                      (let ((val (decode-ebcdic cp fieldval)))
-                       (dbgmsg "field ~D: ~S~%" fieldpos val)
-                       (handle-field fieldpos val fm vals))
-                     (return-from read-fields (values vals nil))))
+                       (dbgmsg "READ-FIELDS: field ~D: ~S~%" fieldpos val)
+                       (handle-field fieldpos val fm vals)))
+                   (dbgmsg "READ-FIELDS: EOR returning ~S~%" vals)
+                   (return-from read-fields (values vals nil)))
 
                   ((= b #x11) ; No? Check for start-of-field.
                    ;; Finish previous field if necessary.
                    (when infield
+                     ;; (dbgmsg "READ-FIELDS: #x11 infield ~S ~S~%" cp fieldval)
                      (let ((val (decode-ebcdic cp fieldval)))
-                       (dbgmsg "field ~D: ~S~%" fieldpos val)
-                       (handle-field fieldpos fieldval fm vals)))
+                       ;; (dbgmsg "READ-FIELDS: field ~D: ~S~%" fieldpos val)
+                       (handle-field fieldpos val fm vals)))
 
                    ;; Start a new field.
                    (setf infield t
@@ -441,7 +469,7 @@ A synonym for HASH-TABLE."
 
                   ((not infield) ; Consume all other bytes as field contents
                            ; if we're in a field.
-                   (dbgmsg "Got unexpected byte while processing fields: ~2,'0x~%" b)
+                   ;; (dbgmsg "READ-FIELDS: got unexpected byte while processing fields: ~2,'0x~%" b)
                    ;; Next iteration.
                    )
                   (t
