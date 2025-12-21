@@ -39,7 +39,11 @@ Of course, vendors messed up, as the Wikipedia page explains."
   ;; EBCDIC byte to Unicode code point for bytes #x00 to #xff.
   ;; The type CHARACTER appears to work in most Common Lisp.
 
-  (e2u nil :type (or null (vector character 256)) :read-only t)
+  ;;  (e2u nil :type (or null (vector character 256)) :read-only t)
+
+  ;; Let's just do codes.
+
+  (e2u nil :type (or null (vector octet 256)) :read-only t)
 
   ;; Unicode code point to EBCDIC byte for code points #x00 to #xff.
 
@@ -204,8 +208,9 @@ The decoding handles graphic escape to codepage CP310 as needed."
                      ))
           else
             ;; Enter graphic escape mode if necessary.
-            do (if (/= b (char-code ge))
-                   (vector-push runes (the character (aref e2u b)))
+            do (if ;; (/= b (char-code ge))
+                   (/= b ge)
+                   (vector-push (the character (code-char (aref e2u b))) runes)
                    (setf escape t)))
 
     ;; Finally return the string (UNICODE).
