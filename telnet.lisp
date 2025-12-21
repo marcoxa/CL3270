@@ -697,9 +697,15 @@ allowing up to the duration TIMEOUT for the first byte to be read."
               (usocket:with-mapped-conditions (ready-conn)
                 (unwind-protect
                      (let ((n-read
+                            #|
 			    (read-sequence
 			     buffer
-			     (usocket:socket-stream ready-conn)))) ; There is only C.
+			     (usocket:socket-stream ready-conn))
+                            |#
+                            (recv-sequence-no-hang
+			     buffer
+			     (usocket:socket-stream ready-conn))
+                            )) ; There is only C.
                        (dbgmsg "~D bytes read while flushing connection ~S ~S.~%"
                               n-read
                               ready-conn
@@ -720,7 +726,12 @@ allowing up to the duration TIMEOUT for the first byte to be read."
               (usocket:with-mapped-conditions (ready-conn)
                 (unwind-protect
                      (let ((n-read
+                            #|
 			    (read-sequence
+			     buffer
+			     (usocket:socket-stream ready-conn))
+                            |#
+                            (recv-sequence-no-hang
 			     buffer
 			     (usocket:socket-stream ready-conn)))) ; There is only C.
                       (dbgmsg "~D bytes read while flushing connection.~%"
@@ -1281,7 +1292,7 @@ This doc string needs fixing."
   (let ((state :normal))
     (declare (type (member :normal :command :subneg) state))
     
-    (dbgmsg "telnet read~%")
+    (dbgmsg "TR: telnet read~%")
 
     (handler-case
         (loop for b of-type unsigned-byte = (read-byte ss)
