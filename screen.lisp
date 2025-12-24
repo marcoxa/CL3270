@@ -118,7 +118,6 @@ to the 3270 client."
   (make-hash-table :test #'equal))
 
 
-
 ;;; show-screen-opts
 ;;;
 ;;; ShowScreenOpts writes the 3270 datastream for the screen, with the
