@@ -132,8 +132,21 @@ to the result, accordingly."
             (format today ":~2,'0D" ss)))))))
 
 
-(defun now-time (&optional h m s)
-  (today-date h m s))
+(defun now-time ()
+  (multiple-value-bind (ss mn hh dd mm yy dw dsp tz)
+      (decode-universal-time (get-universal-time))
+    (declare (type (mod 60) ss mm)
+             (type (mod 24) hh)
+             (type (integer 0) yy)
+             (type (mod 7) dw)
+             (type boolean dsp)
+             (type (rational -24 24) tz))
+    (declare (ignorable dd mm yy dw dsp tz))
+
+    (with-output-to-string (today nil :element-type 'character)
+      (format today "~2,'0D:~2,'0D:~2,'0D" hh mn ss)
+      )))
+                           
 
 
 ;;;; end of file -- util.lisp
