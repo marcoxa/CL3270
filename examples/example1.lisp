@@ -5,9 +5,9 @@
 
 (in-package "CL3270")
 
-(defparameter screen1
+(defparameter example1-screen1
   (make-screen
-   "Screen1"
+   "Example1 Screen1"
    (make-field :row 0 :col 27 :intense t
                :content "3270 example application")
    (make-field :row 2 :col 0
