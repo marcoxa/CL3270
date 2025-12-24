@@ -33,7 +33,7 @@
 
 (defun non-blank-validator (input)
   (declare (type string input))
-  (not (string= "" (string-trim '(#\Space) input))))
+  (string/= "" (string-trim '(#\Space) input)))
 
 
 ;;;;; var isIntegerRegexp = regexp.MustCompile(`^-?[0-9]+$`)
@@ -110,7 +110,9 @@ FIELD-RULES objects provide validation rules for a particular field."
                       error-field
                       curs-row
                       curs-col 
-                      conn)
+                      conn
+                      &optional
+                      codepage)
   "A higher-level interface to the SHOW-SCREEN function.
 
 HANDLE-SCREEN will loop until all validation rules are satisfied, and only
@@ -137,17 +139,60 @@ CURS-ROW, CURS-COL -- the initial cursor position.
 CONN -- the network connection to the 3270 client.
 "
 
+  (declare (type screen screen)
+           )
+
+  (handle-screen-alt screen
+                      rules
+                      vals
+                      pf-keys
+                      exit-keys
+                      error-field
+                      curs-row
+                      curs-col 
+                      conn
+                      nil
+                      codepage))
+
+
+;;; handle-screen-alt
+;;;
+;;; handle-screen-alt is identical to HandleScreen, but writes to the "alternate"
+;;; screen size provided by dev. To write a non-24-by-80 screen, use this
+;;; HandleScreenAlt function with a non-nil dev. If dev is nil, the behavior is
+;;; identical to HandleScreen, which is limited to 24x80 and will set larger
+;;; terminals to the default 24x80 mode.
+
+(defun handle-screen-alt (screen
+                          rules
+                          vals
+                          pf-keys
+                          exit-keys
+                          error-field
+                          curs-row
+                          curs-col 
+                          conn
+                          devinfo
+                          &optional
+                          (codepage nil cp-supplied-p)
+                          &aux (cp nil))
+
+  (when cp-supplied-p
+    (setf cp codepage))
+      
   ;; Save the original field values for any named fields to support
   ;; the MustChange rule. Also build a map of named fields.
+
   (let ((orig-values (make-hash-table :test #'equal))
         (fields (make-hash-table :test #'equal))
         (my-vals (make-hash-table :test #'equal))
         )
+    (declare (type hash-table orig-values fields my-vals))
 
-    (dbgmsg "HANDLE-SCREEN: saving values and fields.~%")
+    (dbgmsg "HANDLE-SCREEN-ALT: saving values and fields.~%")
 
     (dolist (f (screen-fields screen))
-      (when (not (string= "" (field-name f)))
+      (when (string/= "" (field-name f))
         (setf (gethash (field-name f) orig-values)
               (field-content f)
 
@@ -157,7 +202,7 @@ CONN -- the network connection to the 3270 client.
     (loop for f being the hash-key of vals using (hash-value v)
           do (setf (gethash f my-vals) v))
 
-    (dbgmsg "HANDLE-SCREEN: saved values and fields.~%")
+    (dbgmsg "HANDLE-SCREEN-ALT: saved values and fields.~%")
 
 
     ;; The tagbodies and the GOs are probably fixable in a better way,
@@ -183,24 +228,30 @@ CONN -- the network connection to the 3270 client.
        
 
        (multiple-value-bind (resp err)
-           (show-screen screen my-vals curs-row curs-col conn)
+           (show-screen-opts screen my-vals conn
+                             (make-screen-opts :cursor-row curs-row
+                                               :cursor-col curs-col
+                                               :altscreen devinfo
+                                               :codepage cp))
 
          (when err
-           (format *error-output* "!!! SHOW-SCREEN 1 error ~S~%" err)
-           (return-from handle-screen (values resp err)))
+           (format *error-output* "CL3270: HANDLE-SCREEN-ALT error: ~S~%" err)
+           (return-from handle-screen-alt (values resp err)))
 
          ;; If we got an exit key, return without performing
          ;; validation.
 
          (when (aid-in-set (response-aid resp) exit-keys)
-           (return-from handle-screen (values resp nil)))
+           (return-from handle-screen-alt (values resp nil)))
 
          ;; If we got an unexpected key, set error message and restart
          ;; loop.
 
          (unless (aid-in-set (response-aid resp) pf-keys)
            (unless (or (is-clear-key (response-aid resp))
-                       (is-attention-key (response-aid resp)))
+                       (is-key (response-aid resp) +aid-pa1+)
+                       (is-key (response-aid resp) +aid-pa2+)
+                       (is-key (response-aid resp) +aid-pa3+))
              (setf my-vals (merge-field-values my-vals (response-vals resp))))
            (setf (gethash error-field my-vals)
                  (format nil "~S: unknown key"
@@ -212,8 +263,10 @@ CONN -- the network connection to the 3270 client.
          ;; return.
 
          (when (or (is-clear-key (response-aid resp))
-                   (is-attention-key (response-aid resp)))
-           (return-from handle-screen (values resp nil)))
+                   (is-key (response-aid resp) +aid-pa1+)
+                   (is-key (response-aid resp) +aid-pa2+)
+                   (is-key (response-aid resp) +aid-pa3+))
+           (return-from handle-screen-alt (values resp nil)))
 
          (setq my-vals (merge-field-values my-vals (response-vals resp)))
          (remhash error-field my-vals)
@@ -223,39 +276,47 @@ CONN -- the network connection to the 3270 client.
          (when rules
            (loop for field being the hash-key of rules using (hash-value fr)
 
-                 unless (nth-value 1 (gethash field my-vals))
-                 do
-                 (go :continue)
+                 unless (nth-value 1 (gethash field my-vals)) do
+                     (go :continue)
                  end
 
                  when (and (field-rules-must-change fr)
                            (string= (gethash field my-vals)
-                                    (gethash field orig-values)))
-                 do (setf (gethash error-field my-vals)
-                          (field-rules-error-text fr))
-                 (go :mainloop)
+                                    (gethash field orig-values))) do
+                     (setf (gethash error-field my-vals)
+                           (field-rules-error-text fr))
+                     (go :mainloop)
                  end
               
                  when (and (field-rules-validator fr)
                            (not (funcall (field-rules-validator fr)
-                                         (gethash field my-vals))))
-                 do (setf (gethash error-field my-vals)
-                          (format nil "Value for ~S is not valid"
-                                  field))
-                 (go :mainloop)
+                                         (gethash field my-vals)))) do
+                     (setf (gethash error-field my-vals)
+                           (format nil "Value for ~S is not valid"
+                                   field))
+                     (go :mainloop)
                  end
                  ))
-         (return-from handle-screen (values resp nil))
+
+         ;; Everything passed validation.
+
+         (return-from handle-screen-alt (values resp nil))
          ))
       ))
     ))
 
 
 (defun aid-in-set (aid aids)
+  (declare (type aid aid)
+           (type sequence aids))
   (find aid aids :test #'=))
 
 
-(defun merge-field-values (original current)
+(defun merge-field-values (original
+                           current
+                           &aux
+                           (result (make-hash-table
+                                    :test (hash-table-test original))))
 
   "Merge the ORIGINAL and CURRENT maps.
 
@@ -265,18 +326,17 @@ This is sometimes necessary because the caller of HANDLE-SCREEN may
 provide override values for non-writable fields, and we don't get those
 values back when we round-trip with the 3270 client.
 "
-  (declare (type hash-table original current))
-  (let ((result (make-hash-table :test (hash-table-test original))))
-    (loop for key being the hash-key of current
-          do (setf (gethash key result) (gethash key current)))
+  (declare (type hash-table original current result))
 
-    (loop for key being the hash-key of original
-          unless (nth-value 1 (gethash key result))
+  (loop for key being the hash-key of current
+        do (setf (gethash key result) (gethash key current)))
+
+  (loop for key being the hash-key of original
+        unless (nth-value 1 (gethash key result))
           do (setf (gethash key result)
                    (gethash key original)))
           
-    result
-    ))
+  result)
 
 
 ;;;; end of file -- looper.lisp
