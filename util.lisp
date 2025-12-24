@@ -99,9 +99,9 @@ The value -1 is used to indicate invalid positions."
 
 ;;; Dates
 
-(declaim (ftype (function (&optional boolean boolean boolean) string)
-                today-date
-                now-time))
+(declaim
+ (ftype (function (&optional boolean boolean boolean) string) today-date)
+ (ftype (function () string) now-time))
 
 (defun today-date (&optional h m s)
   "Return a string representing today's date.
