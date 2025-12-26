@@ -81,9 +81,9 @@ The (modified) BUFFER is returned."
   buffer)
 
 
-(declaim (ftype (function (buffer &rest octet) buffer) write-octects-buffer)
-         (inline write-octects-buffer))
-(defun write-octects-buffer (buffer &rest octets)
+(declaim (ftype (function (buffer &rest octet) buffer) write-octets-buffer)
+         (inline write-octets-buffer))
+(defun write-octets-buffer (buffer &rest octets)
   "Appends OCTETS at the end of BUFFER.
 
 OCTETS is a list of OCTET.
