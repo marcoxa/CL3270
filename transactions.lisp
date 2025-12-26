@@ -8,7 +8,7 @@
 ;;;;
 ;;;; Notes:
 ;;;;
-;;;; Most comments are taken directly from Matthew Wilson's.
+;;;; Most comments are taken directly from Matthew R. Wilson's.
 ;;;; 
 ;;;; After seeing 'example4' this functionality myst be changed to
 ;;;; accommodate a 'session' object.

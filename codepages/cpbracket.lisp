@@ -1,4 +1,4 @@
-;;;; -*- Mode: Lisp; Coding: UTF-8 -*-
+;;;; -*- Mode: Lisp; Coding: utf-8 -*-
 
 ;;;; cpbracket.lisp
 
@@ -10,7 +10,7 @@
 ;;;; *codepage-bracket* returns implements the "bracket" code
 ;;;; page as used by {c,wx,x}3270 by default. This is essentially a
 ;;;; modified CP 37 codepage. It has also been seen referred to as
-;;;; CP037-2 (cf., Matthew Wilson's Go code).
+;;;; CP037-2 (cf., Matthew R. Wilson's Go code).
 ;;;;
 ;;;; See Also:
 ;;;;

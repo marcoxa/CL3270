@@ -14,7 +14,7 @@
 ;;;;
 ;;;; Notes:
 ;;;;
-;;;; Matthew Wilson's original note.
+;;;; Matthew R. Wilson's original note.
 ;;;;
 ;;;; After careful consideration, I have decided that the default code page we
 ;;;; will support for EBCDIC is IBM CP 1047. Other code pages may be globally

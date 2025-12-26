@@ -8,7 +8,7 @@
 ;;;;
 ;;;; Notes:
 ;;;;
-;;;; Most comments are taken directly from Matthew Wilson's.
+;;;; Most comments are taken directly from Matthew R. Wilson's.
 
 
 (in-package "CL3270")

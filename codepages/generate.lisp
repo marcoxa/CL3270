@@ -18,7 +18,7 @@
 ;;;
 ;;; Notes:
 ;;;
-;;; 2025-12-04: MA: This is essentially the `read` function in Matthew
+;;; 2025-12-04: MA: This is essentially the `read` function in Matthew R.
 ;;; Wilson's `generate` GO code.
 
 (defun ucm-process-file (ucm-filename &aux (ucm-file (pathname ucm-filename)))
@@ -80,7 +80,7 @@
 
 Return, as two values, the two codes appearing on LINE."
 
-  ;; Matthew Wilson's code uses GO regexps.  I want to avoid
+  ;; Matthew R. Wilson's code uses GO regexps.  I want to avoid
   ;; dependencies, plus, after all, the UCM lines look like
   ;;
   ;; <UXXX> \xXX(\xXX\)? |D
@@ -188,12 +188,12 @@ CPS-DIR defaults to *CL3270-CODE-PAGE-LOCAL-DIR*."
 (defparameter *ibm-x3270-icu-code-page-codes*
   (list 37 273 275 277 278 280 284 285 297 424 500 803 870 871 875 880
         1026 1047 1140 1141 1142 1143 1144 1145 1146 1147 1148
-        1149 1160) ; Matthew Wilson's Discord post list.
+        1149 1160) ; Matthew R. Wilson's Discord post list.
   
   "Code page ids of files 'ibm-\\([0-9]+\\)_*.ucm' in *CODE-PAGES-UCM-DIR*.
 
 These are the code pages recognized by x3270.  Eventually a few more
-will be added according to what Matthew Wilson does with his GO
+will be added according to what Matthew R. Wilson does with his GO
 library.")
 
 

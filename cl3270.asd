@@ -13,7 +13,7 @@
 
 The CL3270 implements a 3270 data stream handling/emulation.
 
-THe inspiration (and source material) is Matthew Wilson's GO library
+The inspiration (and source material) is Matthew R. Wilson's GO library
 which can be found at
 [go3720](https://pkg.go.dev/github.com/racingmars/go3270)."
 

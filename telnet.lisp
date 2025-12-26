@@ -340,7 +340,7 @@ connection, C."
 
 ;;; negotiate-telnet
 ;;;
-;;; New version tracking Matthew Wilson's GO one.
+;;; New version tracking Matthew R. Wilson's GO one.
 ;;;
 ;;; Notes:
 ;;;
@@ -758,7 +758,7 @@ allowing up to the duration TIMEOUT for the first byte to be read."
 ;;; Notes:
 ;;;
 ;;; Since GO has harebrained error handling (read: let's go back to
-;;; early, early C) the code for 'checkOptionResponse' in Matthew
+;;; early, early C) the code for 'checkOptionResponse' in Matthew R.
 ;;; Wilsons' code must follow that scheme: 'checkOptionResponse' either
 ;;; returns 'nil' or returns an error thingy, while, possibly,
 ;;; modifying SENT-EOR or SENT-BIN (used as "out" parameters).
