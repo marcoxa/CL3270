@@ -10,7 +10,7 @@
 ;;;;
 ;;;; This example works only in Lispworks for the time being.
 ;;;; Eventually there will be a portable Multiprocessing and MAILBOX
-;;;; implementation to fill in for GO channels (yes, I know aboyt
+;;;; implementation to fill in for GO channels (yes, I know about
 ;;;; Bordeaux Threads and ChanL).
 
 
@@ -113,7 +113,7 @@
                               (mp:mailbox-send done-mb t)
                               (loop-finish)))))))
 
-               (ticker-proc
+               (ticker-proc ; I could use a MP:TIMER.
                 (mp:process-run-function
                  "ticker"
                  (list :mailbox ticker-mb)
@@ -172,4 +172,4 @@
   )
 
 
-;;;; end of file -- example1.lisp
+;;;; end of file -- example3.lisp
