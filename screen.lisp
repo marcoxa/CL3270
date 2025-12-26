@@ -19,25 +19,22 @@
 ;;;
 ;;; Should use my own DEFENUM.
 
-(deftype color ()
-  'octet)
+(deftype color () 'octet)
 
 (defconstant +default-color+ 0)
 
-(defconstant +Blue+         #xf1)
-(defconstant +Red+          #xf2)
-(defconstant +Pink+         #xf3)
-(defconstant +Green+        #xf4)
-(defconstant +Turquoise+    #xf5)
-(defconstant +Yellow+       #xf6)
-(defconstant +White+        #xf7)
+(defconstant +blue+         #xf1)
+(defconstant +red+          #xf2)
+(defconstant +pink+         #xf3)
+(defconstant +green+        #xf4)
+(defconstant +turquoise+    #xf5)
+(defconstant +yellow+       #xf6)
+(defconstant +white+        #xf7)
 
 
 ;;; highlight -- 3270 extended field attribute highlighting method.
 
-(deftype highlight ()
-  '(unsigned-byte 8))
-
+(deftype highlight () 'octet)
 
 ;;; The valid 3270 highlights.
 
