@@ -53,7 +53,7 @@ The value -1 is used to indicate invalid positions."
   )
 
 
-;;; Strings and octects.
+;;; Strings and octets.
 ;;; Just not to depend on BABEL or FLEXI-STREAMS
 
 (defun octets-to-string (octets)
