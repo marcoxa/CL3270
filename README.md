@@ -35,8 +35,8 @@ T
 CL-USER 43 > (in-package "CL3270")
 #<The CL3270 package, 327/512 internal, 6/16 external>
 
-CL3270 44 > (load "examples/example2.lisp")
-#P"examples/example2.lisp")
+CL3270 44 > (load "examples/example2/example2.lisp")
+#P"examples/example2/example2.lisp")
 
 CL3270 45 > (cl3270-example2 :debug nil)
 ```
