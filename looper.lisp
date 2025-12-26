@@ -174,20 +174,30 @@ CONN -- the network connection to the 3270 client.
                           conn
                           devinfo
                           &optional
-                          (codepage nil cp-supplied-p)
-                          &aux (cp nil))
+                          (codepage *default-codepage* cp-supplied-p)
+                          &aux (cp codepage))
 
-  (when cp-supplied-p
+  (declare (type screen screen)
+           (type (or null dict) rules vals)
+           (type sequence pf-keys exit-keys)
+           (type (or symbol string) error-field)
+           (type row-index curs-row)
+           (type col-index curs-col)
+           (type usocket:stream-usocket conn)
+           (type (or null device-info) devinfo)
+           (type codepage codepage cp))
+  
+  (when (and cp-supplied-p (codepage-p codepage))
     (setf cp codepage))
       
   ;; Save the original field values for any named fields to support
   ;; the MustChange rule. Also build a map of named fields.
 
-  (let ((orig-values (make-hash-table :test #'equal))
-        (fields (make-hash-table :test #'equal))
-        (my-vals (make-hash-table :test #'equal))
+  (let ((orig-values (make-dict :test #'equal))
+        (fields (make-dict :test #'equal))
+        (my-vals (make-dict :test #'equal))
         )
-    (declare (type hash-table orig-values fields my-vals))
+    (declare (type dict orig-values fields my-vals))
 
     (dbgmsg "HANDLE-SCREEN-ALT: saving values and fields.~%")
 
@@ -199,8 +209,9 @@ CONN -- the network connection to the 3270 client.
               (gethash (field-name f) fields)
               f)))
 
-    (loop for f being the hash-key of vals using (hash-value v)
-          do (setf (gethash f my-vals) v))
+    (when vals
+      (loop for f being the hash-key of vals using (hash-value v)
+            do (setf (gethash f my-vals) v)))
 
     (dbgmsg "HANDLE-SCREEN-ALT: saved values and fields.~%")
 
