@@ -9,20 +9,26 @@
 ;;;; Notes:
 ;;;;
 ;;;; Most comments are taken directly from Matthew Wilson's.
-
+;;;; 
+;;;; After seeing 'example4' this functionality myst be changed to
+;;;; accommodate a 'session' object.
 
 (in-package "CL3270")
 
+(defstruct abstract-session) ; Essentially a place-holder.
 
 (deftype tx ()
-  `(function (usocket:usocket device-info t)
-             (values t #| tx |# t error)))
+  '(function (abstract-session usocket:usocket device-info t)
+             (values abstract-session t #| tx |# t error)))
 
 
-(defun run-transactions (conn dev initial data)
+(defun run-transactions (conn dev initial data
+                              &optional (s (make-abstract-session)))
 
   (declare (type usocket:usocket conn)
            (type (or null device-info) dev)
+           (type (or null tx) initial)
+           (type abstract-session s)
            )
 
   (let ((next initial)
@@ -36,8 +42,10 @@
                                   :cols 80
                                   :term-type "DEFAULT")))
 
-    (loop (setf (values next data err)
-                (funcall next conn dev data))
+    (loop (dbgmsg "RT: next ~S~%" next)
+
+          (setf (values s next data err)
+                (funcall next s conn dev data))
 
           (when err
             (return-from run-transactions err))
