@@ -27,7 +27,7 @@ USAGE
 -----
 
 To start the server just issue the following:
-```
+```Common Lisp
 CL-USER 42 > (asdf:load-system "cl3270")
 ;;; ...
 T
