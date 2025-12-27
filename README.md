@@ -50,6 +50,14 @@ Now you can start a **3270** *terminal emulator*, e.g.,
 business...
 
 
+VERSIONS
+--------
+
+The current version is derivable from the TIMESTAMP file.
+
+The previous mejor version is from 2025-11-27.
+
+
 ### A NOTE ON FORKING
 
 Of course you are free to fork the project subject to the current
