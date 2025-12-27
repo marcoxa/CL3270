@@ -55,7 +55,7 @@ VERSIONS
 
 The current version is derivable from the TIMESTAMP file.
 
-The previous mejor version is from 2025-11-27.
+The previous major version is from 2025-11-27.
 
 
 ### A NOTE ON FORKING
