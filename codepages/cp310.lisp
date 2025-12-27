@@ -1,4 +1,4 @@
-;;;; -*- Mode: Lisp; Coding: UTF-8 -*-
+;;;; -*- Mode: Lisp; Coding: utf-8 -*-
 
 ;;;; cp310.lisp
 ;;;;

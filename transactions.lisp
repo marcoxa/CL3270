@@ -19,7 +19,7 @@
 
 (deftype tx ()
   '(function (abstract-session usocket:usocket device-info t)
-             (values abstract-session t #| tx |# t error)))
+             (values abstract-session t #| tx |# t error))) ; No recursive types, damn it!
 
 
 (defun run-transactions (conn dev initial data

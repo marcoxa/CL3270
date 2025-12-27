@@ -78,8 +78,6 @@
 
 
 ;;; screen-opts
-;;;
-
 
 (defstruct screen-opts
   "The Screen-opts Struct.
@@ -197,27 +195,12 @@ to the 3270 client."
 
     ;; (dbgmsg "SCO: munging fields.~%")
     (dolist (fld (screen-fields screen))
-      #|
-      (dbgmsg "SCO: field ~S keepspaces ~S~%"
-              fld
-              (field-keepspaces fld)
-              )
-      (dbgmsg "SCO: fn ~S resp-vals ~S found ~S~%"
-              (field-name fld)
-              (response-vals resp)
-              (multiple-value-list (gethash (field-name fld) (response-vals resp)))
-              )
-      |#
       (unless (field-keepspaces fld)
         (let ((found
                (nth-value 1
                           (gethash (field-name fld)
                                    (response-vals resp)))))
-          #|
-          (dbgmsg "SCO: found ~S ~S~%"
-                  found
-                  (multiple-value-list (gethash (field-name fld) (response-vals resp))))
-          |#
+
           (when found
             (setf (gethash (field-name fld) (response-vals resp))
                   (string-trim " "
@@ -314,26 +297,13 @@ encountered.
             (fcol (field-col fld))
             )
 
-        ;; (dbgmsg "SCI: field ~S~%" fld)
         (unless (or (minusp frow) (>= frow rows)
                     (minusp fcol) (>= fcol cols))
           
-          ;; (dbgmsg "SCI: sbs ~S field S~%" (sba frow fcol cols) (build-field fld))
-
           (write-buffer* b (sba frow fcol cols))
           (write-buffer* b (build-field fld)) ; Double check this!
-
-          ;; (dbgmsg "SCI: buffer ~S~%" b)
-
+          
           (let ((content (field-content fld)))
-
-            #|
-            (dbgmsg "SCI: field-name ~S field-content ~S vals ~S~%"
-                    (field-name fld)
-                    content
-                    vals)
-            |#
-
             (when (and vals (field-name fld) (string/= (field-name fld) ""))
               (multiple-value-bind (v found)
                   (gethash (field-name fld) vals)
