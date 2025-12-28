@@ -1,4 +1,4 @@
-;;;; -*- Mode: Lisp -*-
+;;;; -*- Mode: Lisp; Coding: utf-8 -*-
 
 ;;;; codepage.lisp
 ;;;;
@@ -43,7 +43,7 @@ Of course, vendors messed up, as the Wikipedia page explains."
 
   ;; Let's just do codes.
 
-  (e2u nil :type (or null (vector octet 256)) :read-only t)
+  (e2u nil :type (or null (vector rune 256)) :read-only t)
 
   ;; Unicode code point to EBCDIC byte for code points #x00 to #xff.
 
@@ -51,7 +51,7 @@ Of course, vendors messed up, as the Wikipedia page explains."
 
   ;; Map of Unicode code points to EBCDIC bytes for code points above #xff.
 
-  (high-u2e (make-hash-table :test #'eq) :type hash-table :read-only t)
+  (high-u2e (make-dict :test #'eql) :type dict :read-only t)
 
   ;; The EBCDIC substitute character to use if there is no EBCDIC character
   ;; for the requested Unicode code point (typically #x3f).
@@ -70,7 +70,7 @@ Of course, vendors messed up, as the Wikipedia page explains."
 
   ;; Map of Unicode code points to graphic escape EBCDIC bytes.
 
-  (u2ge (make-hash-table :test #'eq) :type hash-table :read-only t)
+  (u2ge (make-dict :test #'eql) :type dict :read-only t)
 
   )
 
@@ -173,7 +173,10 @@ See Also:
 The decoding handles graphic escape to codepage CP310 as needed."
 
   (declare (type codepage cp)
-           (type (vector (unsigned-byte 8)) bytes))
+           (type (vector octet) bytes))
+  
+  ;; #+sbcl
+  ;; (declare (optimize (safety 0))) ; SBCL is too fussy (and wrong on 2.2.9)
 
   (let ((runes (make-array (length bytes)
                            :fill-pointer 0
@@ -189,28 +192,33 @@ The decoding handles graphic escape to codepage CP310 as needed."
         )
     (declare (type (vector character) runes)
              (type boolean escape)
-             (type (or null (vector character)) ge2u e2u)
-             (type (unsigned-byte 16) repl-char-code)
-             (type (unsigned-byte 8) ge) ; octet
+	     (type (or null (vector rune 256)) e2u)
+             (type (or null (vector character 256)) ge2u)
+             (type rune repl-char-code)
+             (type octet ge) ; octet
              (type character sub-char)
              )
 
     (loop for b of-type octet across bytes
           if escape
-            do (let ((r (aref ge2u b)))
-                 (declare (type character r))
+            do (let* ((r (aref ge2u b))
+		      (rcc (char-code r))
+		      )
+                 (declare (type character r)
+			  (type rune rcc)) ; SBCL is right, but toooooo fussy.
 
                  (setq escape nil)
-                 (if (/= (char-code r) repl-char-code)
+                 (if (/= rcc repl-char-code)
 
-                     (vector-push runes r)
-                     (vector-push runes sub-char) ; Unicode "substitute".
+                     (vector-push r runes)
+                     (vector-push sub-char runes) ; Unicode "substitute".
                      ))
           else
             ;; Enter graphic escape mode if necessary.
             do (if ;; (/= b (char-code ge))
                    (/= b ge)
-                   (vector-push (the character (code-char (aref e2u b))) runes)
+                   ;; (vector-push (the character (code-char (aref e2u b))) runes)
+		   (vector-push (code-char (aref e2u b)) runes)
                    (setf escape t)))
 
     ;; Finally return the string (UNICODE).
@@ -250,10 +258,10 @@ The encoding will handle graphic escape to CP310 as needed."
           initially (progn ec-p ge) ; Will it work?
           do (cond ((< cc u2e-len) (write-buffer out (aref u2e cc)))
 
-                   ((nth 1 (setf (values ec ec-p) (gethash cc high2e)))
+                   ((nth-value 1 (setf (values ec ec-p) (gethash cc high2e)))
                     (write-buffer out ec))
 
-                   ((nth 1 (setf (values ec ec-p) (gethash cc u2ge)))
+                   ((nth-value 1 (setf (values ec ec-p) (gethash cc u2ge)))
                     (write-buffer out ge)
                     (write-buffer out ec))
                    
