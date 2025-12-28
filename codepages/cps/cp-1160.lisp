@@ -1,4 +1,4 @@
-;;;; -*- Mode: Lisp; Coding: UTF-8 -*-
+;;;; -*- Mode: Lisp; Coding: utf-8 -*-
 
 ;;;; cp-1160.lisp
 
@@ -7,7 +7,7 @@
 ;;;; See the file COPYING in the top folder for licensing and
 ;;;; copyright information.
 ;;;;
-;;;; File generated on 2025-12-13:21:38:52
+;;;; File generated on 2025-12-28:10:30:21
 
 (in-package "CL3270")
 
@@ -19,7 +19,7 @@
 
 
 (defparameter *e2u-codepage-1160*
-  (make-array 256 :element-type '(mod #x10000)
+  (make-array 256 :element-type 'rune
     :initial-contents '(
     #|             _0     _1     _2     _3     _4     _5     _6     _7     _8     _9     _A     _B     _C     _D     _E     _F |#
     #| 0_ |#     #x00   #x01   #x02   #x03   #x9C   #x09   #x86   #x7F   #x97   #x8D   #x8E   #x0B   #x0C   #x0D   #x0E   #x0F 
@@ -43,7 +43,7 @@
 
 
 (defparameter *u2e-codepage-1160*
-  (make-array 256 :element-type '(mod #x10000)
+  (make-array 256 :element-type 'octet
     :initial-contents '(
     #|             _0     _1     _2     _3     _4     _5     _6     _7     _8     _9     _A     _B     _C     _D     _E     _F |#
     #| 0_ |#     #x00   #x01   #x02   #x03   #x37   #x2D   #x2E   #x2F   #x16   #x05   #x25   #x0B   #x0C   #x0D   #x0E   #x0F 
@@ -70,14 +70,6 @@
   (make-dict
    :initial-map
    '(
-    (#x0E39 #x00CF) (#x0E3A #x00DA) (#x0E3F #x0070) (#x0E40 #x00DB) 
-    (#x0E41 #x00DC) (#x0E42 #x00DD) (#x0E43 #x00DE) (#x0E44 #x00DF) 
-    (#x0E45 #x00EA) (#x0E46 #x00EB) (#x0E47 #x00EC) (#x0E48 #x00ED) 
-    (#x0E49 #x00EE) (#x0E4A #x00EF) (#x0E4B #x00FD) (#x0E4C #x00FB) 
-    (#x0E4D #x00FC) (#x0E4E #x0071) (#x0E4F #x0080) (#x0E50 #x00B0) 
-    (#x0E51 #x00B1) (#x0E52 #x00B2) (#x0E53 #x00B3) (#x0E54 #x00B4) 
-    (#x0E55 #x00B5) (#x0E56 #x00B6) (#x0E57 #x00B7) (#x0E58 #x00B8) 
-    (#x0E59 #x00B9) (#x0E5A #x0090) (#x0E5B #x00A0) (#x20AC #x00FE) 
     (#x0E01 #x0042) (#x0E02 #x0043) (#x0E03 #x0044) (#x0E04 #x0045) 
     (#x0E05 #x0046) (#x0E06 #x0047) (#x0E07 #x0048) (#x0E08 #x0052) 
     (#x0E09 #x0053) (#x0E0A #x0054) (#x0E0B #x0055) (#x0E0C #x0056) 
@@ -92,6 +84,14 @@
     (#x0E2D #x00AE) (#x0E2E #x00AF) (#x0E2F #x00BA) (#x0E30 #x00BB) 
     (#x0E31 #x00BC) (#x0E32 #x00BD) (#x0E33 #x00BE) (#x0E34 #x00BF) 
     (#x0E35 #x00CB) (#x0E36 #x00CC) (#x0E37 #x00CD) (#x0E38 #x00CE) 
+    (#x0E39 #x00CF) (#x0E3A #x00DA) (#x0E3F #x0070) (#x0E40 #x00DB) 
+    (#x0E41 #x00DC) (#x0E42 #x00DD) (#x0E43 #x00DE) (#x0E44 #x00DF) 
+    (#x0E45 #x00EA) (#x0E46 #x00EB) (#x0E47 #x00EC) (#x0E48 #x00ED) 
+    (#x0E49 #x00EE) (#x0E4A #x00EF) (#x0E4B #x00FD) (#x0E4C #x00FB) 
+    (#x0E4D #x00FC) (#x0E4E #x0071) (#x0E4F #x0080) (#x0E50 #x00B0) 
+    (#x0E51 #x00B1) (#x0E52 #x00B2) (#x0E53 #x00B3) (#x0E54 #x00B4) 
+    (#x0E55 #x00B5) (#x0E56 #x00B6) (#x0E57 #x00B7) (#x0E58 #x00B8) 
+    (#x0E59 #x00B9) (#x0E5A #x0090) (#x0E5B #x00A0) (#x20AC #x00FE) 
     ))
     "Unicode->EBCDIC IBM CP 1160 map for codepoints > #xff.")
 

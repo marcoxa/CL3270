@@ -1,4 +1,4 @@
-;;;; -*- Mode: Lisp; Coding: UTF-8 -*-
+;;;; -*- Mode: Lisp; Coding: utf-8 -*-
 
 ;;;; cp-37.lisp
 
@@ -7,7 +7,7 @@
 ;;;; See the file COPYING in the top folder for licensing and
 ;;;; copyright information.
 ;;;;
-;;;; File generated on 2025-12-13:21:38:52
+;;;; File generated on 2025-12-28:10:30:21
 
 (in-package "CL3270")
 
@@ -19,7 +19,7 @@
 
 
 (defparameter *e2u-codepage-37*
-  (make-array 256 :element-type '(mod #x10000)
+  (make-array 256 :element-type 'rune
     :initial-contents '(
     #|             _0     _1     _2     _3     _4     _5     _6     _7     _8     _9     _A     _B     _C     _D     _E     _F |#
     #| 0_ |#     #x00   #x01   #x02   #x03   #x9C   #x09   #x86   #x7F   #x97   #x8D   #x8E   #x0B   #x0C   #x0D   #x0E   #x0F 
@@ -43,7 +43,7 @@
 
 
 (defparameter *u2e-codepage-37*
-  (make-array 256 :element-type '(mod #x10000)
+  (make-array 256 :element-type 'octet
     :initial-contents '(
     #|             _0     _1     _2     _3     _4     _5     _6     _7     _8     _9     _A     _B     _C     _D     _E     _F |#
     #| 0_ |#     #x00   #x01   #x02   #x03   #x37   #x2D   #x2E   #x2F   #x16   #x05   #x25   #x0B   #x0C   #x0D   #x0E   #x0F 

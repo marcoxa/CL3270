@@ -1,4 +1,4 @@
-;;;; -*- Mode: Lisp; Coding: UTF-8 -*-
+;;;; -*- Mode: Lisp; Coding: utf-8 -*-
 
 ;;;; cp-870.lisp
 
@@ -7,7 +7,7 @@
 ;;;; See the file COPYING in the top folder for licensing and
 ;;;; copyright information.
 ;;;;
-;;;; File generated on 2025-12-13:21:38:52
+;;;; File generated on 2025-12-28:10:30:21
 
 (in-package "CL3270")
 
@@ -19,7 +19,7 @@
 
 
 (defparameter *e2u-codepage-870*
-  (make-array 256 :element-type '(mod #x10000)
+  (make-array 256 :element-type 'rune
     :initial-contents '(
     #|             _0     _1     _2     _3     _4     _5     _6     _7     _8     _9     _A     _B     _C     _D     _E     _F |#
     #| 0_ |#     #x00   #x01   #x02   #x03   #x9C   #x09   #x86   #x7F   #x97   #x8D   #x8E   #x0B   #x0C   #x0D   #x0E   #x0F 
@@ -43,7 +43,7 @@
 
 
 (defparameter *u2e-codepage-870*
-  (make-array 256 :element-type '(mod #x10000)
+  (make-array 256 :element-type 'octet
     :initial-contents '(
     #|             _0     _1     _2     _3     _4     _5     _6     _7     _8     _9     _A     _B     _C     _D     _E     _F |#
     #| 0_ |#     #x00   #x01   #x02   #x03   #x37   #x2D   #x2E   #x2F   #x16   #x05   #x25   #x0B   #x0C   #x0D   #x0E   #x0F 
@@ -70,21 +70,21 @@
   (make-dict
    :initial-map
    '(
-    (#x0150 #x00EF) (#x0151 #x00CF) (#x0154 #x00ED) (#x0155 #x00CD) 
-    (#x0158 #x00AE) (#x0159 #x008E) (#x015A #x00AA) (#x015B #x008A) 
-    (#x015E #x00AF) (#x015F #x008F) (#x0160 #x00BC) (#x0161 #x009C) 
-    (#x0162 #x00B3) (#x0163 #x0044) (#x0164 #x00FD) (#x0165 #x00DD) 
-    (#x016E #x0074) (#x016F #x0054) (#x0170 #x00FB) (#x0171 #x00DB) 
-    (#x0179 #x00B9) (#x017A #x00B7) (#x017B #x00B4) (#x02C7 #x0070) 
-    (#x017C #x00B2) (#x017D #x00B8) (#x017E #x00B6) (#x02D8 #x0080) 
-    (#x02D9 #x00B0) (#x02DB #x009E) (#x02DD #x0064) (#x0102 #x0066) 
-    (#x0103 #x0046) (#x0104 #x00B1) (#x0105 #x00A0) (#x0106 #x0069) 
-    (#x0107 #x0049) (#x010C #x0067) (#x010D #x0047) (#x010E #x00FA) 
-    (#x010F #x00EA) (#x0110 #x00AC) (#x0111 #x008C) (#x0118 #x0072) 
-    (#x0119 #x0052) (#x011A #x00DA) (#x011B #x00DF) (#x0139 #x0078) 
-    (#x013A #x0058) (#x013D #x0077) (#x013E #x0057) (#x0141 #x00BA) 
-    (#x0142 #x009A) (#x0143 #x00BB) (#x0144 #x009B) (#x0147 #x00AB) 
-    (#x0148 #x008B) 
+    (#x0102 #x0066) (#x0103 #x0046) (#x0104 #x00B1) (#x0105 #x00A0) 
+    (#x0106 #x0069) (#x0107 #x0049) (#x010C #x0067) (#x010D #x0047) 
+    (#x010E #x00FA) (#x010F #x00EA) (#x0110 #x00AC) (#x0111 #x008C) 
+    (#x0118 #x0072) (#x0119 #x0052) (#x011A #x00DA) (#x011B #x00DF) 
+    (#x0139 #x0078) (#x013A #x0058) (#x013D #x0077) (#x013E #x0057) 
+    (#x0141 #x00BA) (#x0142 #x009A) (#x0143 #x00BB) (#x0144 #x009B) 
+    (#x0147 #x00AB) (#x0148 #x008B) (#x0150 #x00EF) (#x0151 #x00CF) 
+    (#x0154 #x00ED) (#x0155 #x00CD) (#x0158 #x00AE) (#x0159 #x008E) 
+    (#x015A #x00AA) (#x015B #x008A) (#x015E #x00AF) (#x015F #x008F) 
+    (#x0160 #x00BC) (#x0161 #x009C) (#x0162 #x00B3) (#x0163 #x0044) 
+    (#x0164 #x00FD) (#x0165 #x00DD) (#x016E #x0074) (#x016F #x0054) 
+    (#x0170 #x00FB) (#x0171 #x00DB) (#x0179 #x00B9) (#x017A #x00B7) 
+    (#x017B #x00B4) (#x017C #x00B2) (#x017D #x00B8) (#x017E #x00B6) 
+    (#x02C7 #x0070) (#x02D8 #x0080) (#x02D9 #x00B0) (#x02DB #x009E) 
+    (#x02DD #x0064) 
     ))
     "Unicode->EBCDIC IBM CP 870 map for codepoints > #xff.")
 

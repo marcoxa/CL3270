@@ -1,4 +1,4 @@
-;;;; -*- Mode: Lisp; Coding: UTF-8 -*-
+;;;; -*- Mode: Lisp; Coding: utf-8 -*-
 
 ;;;; cp-875.lisp
 
@@ -7,7 +7,7 @@
 ;;;; See the file COPYING in the top folder for licensing and
 ;;;; copyright information.
 ;;;;
-;;;; File generated on 2025-12-13:21:38:52
+;;;; File generated on 2025-12-28:10:30:21
 
 (in-package "CL3270")
 
@@ -19,7 +19,7 @@
 
 
 (defparameter *e2u-codepage-875*
-  (make-array 256 :element-type '(mod #x10000)
+  (make-array 256 :element-type 'rune
     :initial-contents '(
     #|             _0     _1     _2     _3     _4     _5     _6     _7     _8     _9     _A     _B     _C     _D     _E     _F |#
     #| 0_ |#     #x00   #x01   #x02   #x03   #x9C   #x09   #x86   #x7F   #x97   #x8D   #x8E   #x0B   #x0C   #x0D   #x0E   #x0F 
@@ -43,7 +43,7 @@
 
 
 (defparameter *u2e-codepage-875*
-  (make-array 256 :element-type '(mod #x10000)
+  (make-array 256 :element-type 'octet
     :initial-contents '(
     #|             _0     _1     _2     _3     _4     _5     _6     _7     _8     _9     _A     _B     _C     _D     _E     _F |#
     #| 0_ |#     #x00   #x01   #x02   #x03   #x37   #x2D   #x2E   #x2F   #x16   #x05   #x25   #x0B   #x0C   #x0D   #x0E   #x0F 
@@ -76,19 +76,19 @@
     (#x0393 #x0043) (#x0394 #x0044) (#x0395 #x0045) (#x0396 #x0046) 
     (#x0397 #x0047) (#x0398 #x0048) (#x0399 #x0049) (#x039A #x0051) 
     (#x039B #x0052) (#x039C #x0053) (#x039D #x0054) (#x039E #x0055) 
-    (#x039F #x0056) (#x03A0 #x0057) (#x03A1 #x0058) (#x2015 #x00CF) 
-    (#x03A3 #x0059) (#x03A4 #x0062) (#x03A5 #x0063) (#x2018 #x00CE) 
-    (#x03A6 #x0064) (#x2019 #x00DE) (#x03A7 #x0065) (#x03A8 #x0066) 
-    (#x03A9 #x0067) (#x03AA #x0068) (#x03AB #x0069) (#x03AC #x00B1) 
-    (#x03AD #x00B2) (#x03AE #x00B3) (#x03AF #x00B5) (#x03B0 #x00CD) 
-    (#x03B1 #x008A) (#x03B2 #x008B) (#x03B3 #x008C) (#x03B4 #x008D) 
-    (#x03B5 #x008E) (#x03B6 #x008F) (#x03B7 #x009A) (#x03B8 #x009B) 
-    (#x03B9 #x009C) (#x03BA #x009D) (#x03BB #x009E) (#x03BC #x009F) 
-    (#x03BD #x00AA) (#x03BE #x00AB) (#x03BF #x00AC) (#x03C0 #x00AD) 
-    (#x03C1 #x00AE) (#x03C2 #x00BA) (#x03C3 #x00AF) (#x03C4 #x00BB) 
-    (#x03C5 #x00BC) (#x03C6 #x00BD) (#x03C7 #x00BE) (#x03C8 #x00BF) 
-    (#x03C9 #x00CB) (#x03CA #x00B4) (#x03CB #x00B8) (#x03CC #x00B6) 
-    (#x03CD #x00B7) (#x03CE #x00B9) 
+    (#x039F #x0056) (#x03A0 #x0057) (#x03A1 #x0058) (#x03A3 #x0059) 
+    (#x03A4 #x0062) (#x03A5 #x0063) (#x03A6 #x0064) (#x03A7 #x0065) 
+    (#x03A8 #x0066) (#x03A9 #x0067) (#x03AA #x0068) (#x03AB #x0069) 
+    (#x03AC #x00B1) (#x03AD #x00B2) (#x03AE #x00B3) (#x03AF #x00B5) 
+    (#x03B0 #x00CD) (#x03B1 #x008A) (#x03B2 #x008B) (#x03B3 #x008C) 
+    (#x03B4 #x008D) (#x03B5 #x008E) (#x03B6 #x008F) (#x03B7 #x009A) 
+    (#x03B8 #x009B) (#x03B9 #x009C) (#x03BA #x009D) (#x03BB #x009E) 
+    (#x03BC #x009F) (#x03BD #x00AA) (#x03BE #x00AB) (#x03BF #x00AC) 
+    (#x03C0 #x00AD) (#x03C1 #x00AE) (#x03C2 #x00BA) (#x03C3 #x00AF) 
+    (#x03C4 #x00BB) (#x03C5 #x00BC) (#x03C6 #x00BD) (#x03C7 #x00BE) 
+    (#x03C8 #x00BF) (#x03C9 #x00CB) (#x03CA #x00B4) (#x03CB #x00B8) 
+    (#x03CC #x00B6) (#x03CD #x00B7) (#x03CE #x00B9) (#x2015 #x00CF) 
+    (#x2018 #x00CE) (#x2019 #x00DE) 
     ))
     "Unicode->EBCDIC IBM CP 875 map for codepoints > #xff.")
 
