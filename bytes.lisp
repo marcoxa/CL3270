@@ -16,6 +16,13 @@ Useful as a shorthand."
   '(unsigned-byte 8))
 
 
+(deftype rune ()
+  "The Rune Type.
+
+A shorthand for two-bytes 'code points'."
+  '(unsigned-byte 16))
+
+
 (deftype dict () 
   "The Dict Type.
 
@@ -99,5 +106,11 @@ The (modified) BUFFER is returned."
         do (vector-push b buffer))
   buffer)
   
+
+(declaim (ftype (function (&rest octet) buffer) bufferize))
+(defun bufferize (&rest octets)
+  (let ((buf (make-buffer :capacity (length octets))))
+    (dolist (o octets buf)
+      (vector-push o buf))))
 
 ;;;; end of file -- bytes.lisp
