@@ -223,7 +223,14 @@ library.")
   (flet ((select-cp-file (cp-id file-name)
            (search (format nil "ibm-~D" cp-id) (pathname-name file-name))))
 
-    (loop with ibm-data-ucm-files = (directory cp-ucm-dir)
+    ;; Creating the wild pathname is necessary in SBCL.  LW extends
+    ;; DIRECTORY in the "expected" way, so the original code was too
+    ;; optimistic.
+    
+    (loop with cp-ucm-dir-wild =
+			       (make-pathname :name :wild :type "ucm"
+					      :defaults cp-ucm-dir)
+	  with ibm-data-ucm-files = (directory cp-ucm-dir-wild)
           for cp-id in cp-ids
           for ibm-data-ucm-file =
             (find-if #'(lambda (f) (select-cp-file cp-id f))
@@ -249,9 +256,11 @@ defaults to *IBM-ICU-CODE-PAGE-LOCAL-DIR*."
   (declare (type list cp-ids)
            (type (or string pathname) cp-ucm-dir))
 
-  (loop for (cp-id cp-ucm-file) in (select-codepage-files cp-ids cp-ucm-dir)
-        do (generate-code-page cp-id cp-ucm-file)
-        ))
+  (let ((cpid-file-pairs
+	  (select-codepage-files cp-ids cp-ucm-dir)))
+    (loop for (cp-id cp-ucm-file) in cpid-file-pairs
+          do (generate-code-page cp-id cp-ucm-file)
+          )))
 
 
 ;;; generate-code-page
@@ -346,7 +355,7 @@ this is useful for debugging purposes.
           (block e2ucp
             (terpri cps) (terpri cps)
             (format cps "(defparameter *e2u-codepage-~D*~%" cp-id)
-            (format cps "  (make-array 256 :element-type '(mod #x10000)~%")
+            (format cps "  (make-array 256 :element-type 'rune~%")
             (format cps "    :initial-contents '(~%")
 
             (let ((line 0)
@@ -383,7 +392,7 @@ this is useful for debugging purposes.
 
           (block u2ecp
             (format cps "~2%(defparameter *u2e-codepage-~D*~%" cp-id)
-            (format cps "  (make-array 256 :element-type '(mod #x10000)~%")
+            (format cps "  (make-array 256 :element-type 'octet~%")
             (format cps "    :initial-contents '(~%")
 
             (let ((line 0)
@@ -495,7 +504,7 @@ defintion facilities like ASDF."
 
       (let* ((cpcfp (compile-file-pathname cpf))
              (cpfwd (file-write-date cpf))
-             (cpcfpwd (file-write-date cpcfp))
+             (cpcfpwd (and (probe-file cpcfp) (file-write-date cpcfp)))
              )
         (declare (type pathname cpcfp)
                  (type (or null integer) cpfwd cpcfpwd))
