@@ -51,7 +51,14 @@
   )
 
 
-(declaim (ftype (function ((vector octet) usocket:stream-usocket) null)
+(declaim (ftype (function ((vector octet)
+			   usocket:stream-usocket
+			   &rest t
+			   &key
+			   (:start fixnum)
+			   (:end (or null fixnum))
+			   &allow-other-keys)
+			  integer)
                 recv-sequence)
          (inline recv-sequence))
 (defun recv-sequence (seq ss &rest keys &key (start 0) end &allow-other-keys)
@@ -217,7 +224,8 @@ necessary for TN3270 or similar on a new telnet connection, C."
 
     ;; Enable terminal type option.
 
-    (send-sequence (vector +iac+ +do+ +terminal-type+) ss)
+    ;; (send-sequence (the (vector octet) (vector +iac+ +do+ +terminal-type+)) ss)
+    (send-sequence (bufferize +iac+ +do+ +terminal-type+) ss)
 
     (setf (values sent-will-bin sent-will-eor)
           (check-option-response c +terminal-type+ +do+ sent-will-eor sent-will-bin))
@@ -225,7 +233,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
     ;; Switch to the first available terminal type.
 
     (send-sequence
-     (vector +iac+ +sb+ +terminal-type+ +terminal-type-send+ +iac+ +se+)
+     (bufferize +iac+ +sb+ +terminal-type+ +terminal-type-send+ +iac+ +se+)
      ss)
 
     (handler-case
@@ -237,14 +245,14 @@ necessary for TN3270 or similar on a new telnet connection, C."
 
     ;; Request end of record mode
 
-    (send-sequence (vector +iac+ +do+ +eor-option+) ss)
+    (send-sequence (bufferize +iac+ +do+ +eor-option+) ss)
 
     (setf (values sent-will-bin sent-will-eor)
           (check-option-response c +eor-option+ +do+ sent-will-eor sent-will-bin))
 
     ;; Request binary mode
 
-    (send-sequence (vector +iac+ +do+ +binary+) ss)
+    (send-sequence (bufferize +iac+ +do+ +binary+) ss)
 
     (setf (values sent-will-bin sent-will-eor)
           (check-option-response c +binary+ +do+ sent-will-eor sent-will-bin))
@@ -272,7 +280,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
                   (cond ((and (= (aref buf 0) +iac+)
                               (= (aref buf 1) +do+)
                               (= (aref buf 2) +eor-option+))
-                         (send-sequence (vector +iac+
+                         (send-sequence (bufferize +iac+
                                                  +will+
                                                  +eor-option+)
                                          ss)
@@ -281,7 +289,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
                         ((and (= (aref buf 0) +iac+)
                               (= (aref buf 1) +do+)
                               (= (aref buf 2) +binary+))
-                         (send-sequence (vector +iac+
+                         (send-sequence (bufferize +iac+
                                                  +will+
                                                  +binary+)
                                          ss)
@@ -301,7 +309,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
     ;; Enter end of record mode.
 
     (unless sent-will-eor
-      (send-sequence (vector +iac+ +will+ +eor-option+) ss)
+      (send-sequence (bufferize +iac+ +will+ +eor-option+) ss)
 
       (setf (values sent-will-eor sent-will-bin)
             (check-option-response c +eor-option+ +will+ sent-will-eor sent-will-bin)))
@@ -309,7 +317,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
     ;; Enter binary mode.
 
     (unless sent-will-bin
-      (send-sequence (vector +iac+ +will+ +binary-option+) ss)
+      (send-sequence (bufferize +iac+ +will+ +binary-option+) ss)
         
       (setf (values sent-will-eor sent-will-bin)
             (check-option-response c +binary-option+ +will+ sent-will-eor sent-will-bin)))
@@ -505,7 +513,7 @@ SENT-BIN : a BOOLEAN
                       (= (aref buf 1) +do+)
                       (= (aref buf 2) +eor-option+))
 
-                 (send-sequence (vector +iac+ +will+ +eor-option+) ss)
+                 (send-sequence (bufferize +iac+ +will+ +eor-option+) ss)
 
                  (setf sent-eor t)
 
@@ -516,7 +524,7 @@ SENT-BIN : a BOOLEAN
                       (= (aref buf 1) +do+)
                       (= (aref buf 2) +binary+))
 
-                 (send-sequence (vector +iac+ +will+ +binary+) ss)
+                 (send-sequence (bufferize +iac+ +will+ +binary+) ss)
 
                  (setf sent-bin t)
                  (return-from check-option-response
@@ -555,7 +563,7 @@ SENT-BIN : a BOOLEAN
 
     (error (e)
       (format *error-output*
-              "CL3270: got error ~S while checking response.~%")
+              "CL3270: got error ~S while checking response.~%" e)
       (error e))))
 
 
@@ -571,7 +579,7 @@ SENT-BIN : a BOOLEAN
          (n (recv-sequence-no-hang buf c))
          )
 
-    (declare (type (vector (unsigned-byte 8) 100) buf)
+    (declare (type (vector octet 100) buf)
              (dynamic-extent buf) ; We SUBSEQ it, therefore...
              (type fixnum n))
 
@@ -665,7 +673,7 @@ SENT-BIN : a BOOLEAN
       ;; screen and put it in alternate screen mode. (EWA, reset WCC,
       ;; telnet EOR)
 
-      (send-sequence (vector #x7e #xc3 #xff #xef) ss)
+      (send-sequence (bufferize #x7e #xc3 #xff #xef) ss)
 
       ;; Now we need to send the Write Structured Field command (0xf3)
       ;; with the "Read Partition - Query" structured field. Note that
@@ -673,7 +681,7 @@ SENT-BIN : a BOOLEAN
       ;; length is the *unescaped* length, including the 2 length
       ;; bytes but excluding the telnet EOR (5).
 
-      (send-sequence (vector #xf3 0 5 #x01 #xff #xff #x02 #xff #xef) ss)
+      (send-sequence (bufferize #xf3 0 5 #x01 #xff #xff #x02 #xff #xef) ss)
       
       (let ((rs (usocket:wait-for-input c :timeout 3)))
         (if rs
