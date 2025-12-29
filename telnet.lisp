@@ -580,7 +580,7 @@ SENT-BIN : a BOOLEAN
          )
 
     (declare (type (vector octet 100) buf)
-             (dynamic-extent buf) ; We SUBSEQ it, therefore...
+             ;; (dynamic-extent buf) ; We SUBSEQ it, therefore...; but SBCL, of course, complains.
              (type fixnum n))
 
     ;; At a minimum, with a one-character terminal type name, we
