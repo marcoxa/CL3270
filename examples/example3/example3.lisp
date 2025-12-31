@@ -16,6 +16,12 @@
 
 (in-package "CL3270")
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  #-lispworks
+  (error "CL3270: error: 'example3.lisp' requires Lispworks FTTB.  Sorry.")
+  t)
+
+
 (defparameter example3-screen1
   (make-screen
    "Example 3 Screen 1"

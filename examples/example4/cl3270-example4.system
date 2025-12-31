@@ -7,6 +7,13 @@
 ;;;; See the file COPYING in the top directory for copyright and
 ;;;; licensing information.
 
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  #-lispworks
+  (error "CL3270: error: 'example4.lisp' requires Lispworks FTTB.  Sorry.")
+  t)
+
+
 (mk:defsystem "cl3270-example4"
   :author "Marco Antoniotti"
   :licence "MIT"
