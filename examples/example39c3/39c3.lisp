@@ -78,7 +78,7 @@
    (make-field :row 2 :col 0
                :content "Thank you for using this application. Goodbye.")))
 
-(defun cl3270-congress (&key (handler 'cl3270-handle) (host "127.0.0.1") (debug nil))
+(defun cl3270-congress (&key (handler 'cl3270-handle-congress) (host "127.0.0.1") (debug nil))
   (prog1
       (usocket:with-socket-listener (conn host 3270
                                           :element-type '(unsigned-byte 8)
@@ -90,10 +90,11 @@
             (funcall handler c))))
     (format t ";;; CL3270: congress: server closed.~%")))
 
-(defun cl3270-handle (c
-                      &aux
-                      (field-values (make-hash-table :test #'equalp))
-                      response)
+
+(defun cl3270-handle-congress (c
+			       &aux
+				 (field-values (make-hash-table :test #'equalp))
+				 response)
   ;; C is a USOCKET:SOCKET
 
   (declare (type usocket:stream-usocket c))
@@ -104,7 +105,7 @@
 
         (when err
           (format *error-output* "CL3270 HANDLE: error: ~S~%" err)
-          (return-from cl3270-handle nil))
+          (return-from cl3270-handle-congress nil))
 
         (dbgmsg "CL3270 HANDLE: telnet negotiated; devinfo ~S.~2%" devinfo)
 
