@@ -4,6 +4,18 @@ The code has been rewritten to track Matthew R. Wilson's GO code
 latest version (November 2025).
 
 
+## 2025-12-31
+
+### To Do
+
+Reuse the socket address.
+
+
+### SBCL
+
+As usual, SBCL is very annoying.  Tracking down a mysterious type bug.
+
+
 ## 2025-11-30
 
 ### Rewriting
