@@ -40,11 +40,12 @@
 ;;; ---------
 
 (declaim (ftype (function ((vector octet) usocket:stream-usocket) null)
-                send-sequence)
+		send-sequence)
          (inline send-sequence))
-(defun send-sequence (seq ss)
+(defun send-sequence (seq conn &aux (ss (usocket:socket-stream conn)))
   (declare (type (vector octet) seq)
-           (type usocket:stream-usocket ss))
+           (type usocket:stream-usocket conn)
+	   (type stream ss))
 
   (write-sequence seq ss)
   (force-output ss) ; Maybe it should be FINISH-OUTPUT.
@@ -61,18 +62,19 @@
 			  integer)
                 recv-sequence)
          (inline recv-sequence))
-(defun recv-sequence (seq ss &rest keys &key (start 0) end &allow-other-keys)
+(defun recv-sequence (seq conn &rest keys &key (start 0) end &allow-other-keys)
   (declare (type (vector octet) seq)
-           (type usocket:stream-usocket ss)
+           (type usocket:stream-usocket conn)
+	   (type list keys)
            (ignore start end))
   
-  (apply #'read-sequence seq ss keys)
+  (apply #'read-sequence seq (usocket:socket-stream conn) keys)
   ;; (apply #'usocket:socket-receive ss seq nil keys)
   )
 
 
 (defun read-delimited-sequence (seq ss start-seq end-seq)
-  "Read an octet sequence from strem SS.
+  "Read an octet sequence from stream SS.
 
 The octets read are destructively stored in sequence SEQ and the bound
 by (sub)sequences START-SEQ and END-SEQ.
@@ -166,10 +168,12 @@ Other, IO related, errors may be raised."
            (type usocket:stream-usocket c)
            (ignore start end))
 
+  (check-type c usocket:stream-usocket)
+  
   (assert (array-has-fill-pointer-p seq))
 
   (loop with b of-type (or null octet) = 0
-        with ss = (usocket:socket-stream c)
+        with ss of-type stream = (usocket:socket-stream c)
         for br from 0
         while (usocket:wait-for-input c :timeout timeout :ready-only t)
         do (setf b (read-byte ss nil nil))
@@ -216,16 +220,23 @@ necessary for TN3270 or similar on a new telnet connection, C."
   ;; sooner than we otherwise would. Keep track here so we know not to send
   ;; them again.
 
+  (declare (type usocket:stream-usocket c))
+
   (let ((sent-will-bin nil)
         (sent-will-eor nil)
         (devtype nil)
         )
     (declare (type boolean sent-will-bin sent-will-eor))
 
+    (check-type c usocket:stream-usocket)
+    (check-type ss stream)
+
     ;; Enable terminal type option.
 
+    (dbgmsg "NT: SEND-SEQUENCE 1: SS = ~S~%" ss)
+    
     ;; (send-sequence (the (vector octet) (vector +iac+ +do+ +terminal-type+)) ss)
-    (send-sequence (bufferize +iac+ +do+ +terminal-type+) ss)
+    (send-sequence (bufferize +iac+ +do+ +terminal-type+) c)
 
     (setf (values sent-will-bin sent-will-eor)
           (check-option-response c +terminal-type+ +do+ sent-will-eor sent-will-bin))
@@ -234,7 +245,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
 
     (send-sequence
      (bufferize +iac+ +sb+ +terminal-type+ +terminal-type-send+ +iac+ +se+)
-     ss)
+     c)
 
     (handler-case
         (setq devtype (get-terminal-type c))
@@ -245,14 +256,14 @@ necessary for TN3270 or similar on a new telnet connection, C."
 
     ;; Request end of record mode
 
-    (send-sequence (bufferize +iac+ +do+ +eor-option+) ss)
+    (send-sequence (bufferize +iac+ +do+ +eor-option+) c)
 
     (setf (values sent-will-bin sent-will-eor)
           (check-option-response c +eor-option+ +do+ sent-will-eor sent-will-bin))
 
     ;; Request binary mode
 
-    (send-sequence (bufferize +iac+ +do+ +binary+) ss)
+    (send-sequence (bufferize +iac+ +do+ +binary+) c)
 
     (setf (values sent-will-bin sent-will-eor)
           (check-option-response c +binary+ +do+ sent-will-eor sent-will-bin))
@@ -283,7 +294,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
                          (send-sequence (bufferize +iac+
                                                  +will+
                                                  +eor-option+)
-                                         ss)
+                                         c)
                          (setq sent-will-eor t))
 
                         ((and (= (aref buf 0) +iac+)
@@ -292,7 +303,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
                          (send-sequence (bufferize +iac+
                                                  +will+
                                                  +binary+)
-                                         ss)
+                                         c)
                          (setq sent-will-bin t)))
                   (format *error-output*
                           "CL3270: SHORT READ SHORT READ SHORT READ~%")
@@ -309,7 +320,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
     ;; Enter end of record mode.
 
     (unless sent-will-eor
-      (send-sequence (bufferize +iac+ +will+ +eor-option+) ss)
+      (send-sequence (bufferize +iac+ +will+ +eor-option+) c)
 
       (setf (values sent-will-eor sent-will-bin)
             (check-option-response c +eor-option+ +will+ sent-will-eor sent-will-bin)))
@@ -317,7 +328,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
     ;; Enter binary mode.
 
     (unless sent-will-bin
-      (send-sequence (bufferize +iac+ +will+ +binary-option+) ss)
+      (send-sequence (bufferize +iac+ +will+ +binary-option+) c)
         
       (setf (values sent-will-eor sent-will-bin)
             (check-option-response c +binary-option+ +will+ sent-will-eor sent-will-bin)))
@@ -381,10 +392,15 @@ allowing up to the duration TIMEOUT for the first byte to be read."
 			    (read-sequence
 			     buffer
 			     (usocket:socket-stream ready-conn))
-                            |#
-                            (recv-sequence-no-hang
+                             |#
+			     #|
+                             (recv-sequence-no-hang
 			     buffer
 			     (usocket:socket-stream ready-conn))
+			     |#
+			     (recv-sequence-no-hang
+			      buffer
+			      ready-conn)
                             )) ; There is only C.
                        (dbgmsg "~D bytes read while flushing connection ~S ~S.~%"
                               n-read
@@ -410,10 +426,16 @@ allowing up to the duration TIMEOUT for the first byte to be read."
 			    (read-sequence
 			     buffer
 			     (usocket:socket-stream ready-conn))
-                            |#
+                             |#
+			     #|
                             (recv-sequence-no-hang
 			     buffer
-			     (usocket:socket-stream ready-conn)))) ; There is only C.
+			     (usocket:socket-stream ready-conn))
+			     |#
+			     (recv-sequence-no-hang
+			      buffer
+			      ready-conn)
+			     )) ; There is only C.
                       (dbgmsg "~D bytes read while flushing connection.~%"
                               n-read))
                   (return-from flush-connection nil)
@@ -513,7 +535,7 @@ SENT-BIN : a BOOLEAN
                       (= (aref buf 1) +do+)
                       (= (aref buf 2) +eor-option+))
 
-                 (send-sequence (bufferize +iac+ +will+ +eor-option+) ss)
+                 (send-sequence (bufferize +iac+ +will+ +eor-option+) c)
 
                  (setf sent-eor t)
 
@@ -524,7 +546,7 @@ SENT-BIN : a BOOLEAN
                       (= (aref buf 1) +do+)
                       (= (aref buf 2) +binary+))
 
-                 (send-sequence (bufferize +iac+ +will+ +binary+) ss)
+                 (send-sequence (bufferize +iac+ +will+ +binary+) c)
 
                  (setf sent-bin t)
                  (return-from check-option-response
@@ -576,7 +598,7 @@ SENT-BIN : a BOOLEAN
 
   (let* ((buf (make-buffer :capacity 100))
          ;; (term-type "")
-         (n (recv-sequence-no-hang buf c))
+         (n (recv-sequence-no-hang buf c)) 
          )
 
     (declare (type (vector octet 100) buf)
@@ -673,7 +695,7 @@ SENT-BIN : a BOOLEAN
       ;; screen and put it in alternate screen mode. (EWA, reset WCC,
       ;; telnet EOR)
 
-      (send-sequence (bufferize #x7e #xc3 #xff #xef) ss)
+      (send-sequence (bufferize #x7e #xc3 #xff #xef) c)
 
       ;; Now we need to send the Write Structured Field command (0xf3)
       ;; with the "Read Partition - Query" structured field. Note that
@@ -681,7 +703,7 @@ SENT-BIN : a BOOLEAN
       ;; length is the *unescaped* length, including the 2 length
       ;; bytes but excluding the telnet EOR (5).
 
-      (send-sequence (bufferize #xf3 0 5 #x01 #xff #xff #x02 #xff #xef) ss)
+      (send-sequence (bufferize #xf3 0 5 #x01 #xff #xff #x02 #xff #xef) c)
       
       (let ((rs (usocket:wait-for-input c :timeout 3)))
         (if rs
@@ -708,7 +730,7 @@ SENT-BIN : a BOOLEAN
             for buf = (telnet-read-n c 2)
             unless buf do (loop-finish) end
             do
-              (dbgmsg "TRN: buf 1 ~S~%" buf)
+              (dbgmsg "TRN: buf 1 ~S, type of buf ~S~%" buf (type-of buf))
               (setq l (+ (ash (aref buf 0) 8) (aref buf 1))
                     buf (telnet-read-n c (- l 2)))
             unless buf do (error 'telnet-error) end
@@ -718,7 +740,7 @@ SENT-BIN : a BOOLEAN
             ;; documentation.
 
             do
-              (dbgmsg "TRN: buf 2 ~S~%" buf)
+              (dbgmsg "TRN: buf 2 ~S, type of buf ~S~%" buf (type-of buf))
               (cond ((and (= (aref buf 0) #x81) (= (aref buf 1) #x81))
                       ;; Usable area.
                       (setf (values rows cols) (get-usable-area buf)))
@@ -858,7 +880,8 @@ length) bytes."
 
 (defun get-rpq-names (buf)
 
-  (declare (type (vector unsigned-byte *) buf))
+  ;; (declare (type (vector octet) buf))
+  (declare (type buffer buf))
 
   (cond ((< (length buf) 16) nil)
 
