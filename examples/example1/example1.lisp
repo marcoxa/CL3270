@@ -41,9 +41,9 @@
    ))
 
 
-(defparameter screen2
+(defparameter example1-screen2
   (make-screen
-   "Screen2"
+   "Example1 Screen2"
    (make-field :row 0 :col 27 :intense t
                :content "3270 Example Application")
    (make-field :row 2 :col 0
@@ -100,10 +100,13 @@
                                           )
         (format t ";;; CL3270: example1: server listening on host ~S, port 3270...~%"
                 host)
-        (usocket:with-connected-socket (c (usocket:socket-accept conn))
-          (let ((*do-debug* debug))
-            (funcall handler c))))
-    (format t ";;; CL3270: example1: server closed.~%")))
+	(format t ";;; CL3270: example1: socket listener ~S...~%" conn)
+	(let ((cs (usocket:socket-accept conn)))
+	  (format t ";;; CL3270: example1: accepted ~S...~%" cs)
+          (usocket:with-connected-socket (c cs)
+            (let ((*do-debug* debug))
+              (funcall handler c))))
+	(format t ";;; CL3270: example1: server closed.~%"))))
 
 
 
@@ -172,7 +175,7 @@
                          (loop-finish)
                          )))
 
-               ;; Now we're ready to display screen2
+               ;; Now we're ready to display example1-screen2
                (let ((password-length
                       (length (string-trim " "
                                            (gethash "password" field-values))))
@@ -184,7 +187,7 @@
                                password-length))
 
                  (multiple-value-bind (resp err)
-                     (show-screen screen2 field-values 0 0 c)
+                     (show-screen example1-screen2 field-values 0 0 c)
                    (when err
                      (format *error-output*
                              "CL3270: error: SHOW-SCREEN 2 error ~S~%." err)
@@ -247,7 +250,7 @@
                       ;; blank.
 
                       (multiple-value-bind (resp err)
-                          (show-screen-opts screen1
+                          (show-screen-opts example1-screen1
                                             field-values
                                             c
                                             (make-screen-opts
@@ -325,9 +328,9 @@
                           (loop-finish)
                           )))
 
-                 (dbgmsg "C3270 HANDLE: ready to display screen2~%")
+                 (dbgmsg "C3270 HANDLE: ready to display example1-screen2~%")
 
-                 ;; Now we're ready to display screen2
+                 ;; Now we're ready to display example1-screen2
                  (let ((password-length
                         (length (string-trim " "
                                              (gethash "password" field-values))))
@@ -347,7 +350,7 @@
                                  (response-col response)))
 
                    (multiple-value-bind (resp err)
-                       (show-screen-opts screen2
+                       (show-screen-opts example1-screen2
                                          field-values
                                          c
                                          (make-screen-opts
