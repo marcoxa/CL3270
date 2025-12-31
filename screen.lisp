@@ -87,7 +87,7 @@ to the 3270 client."
   
   (altscreen nil :type (or null device-info))
 
-  (codepage *default-codepage* :type codepage)
+  (codepage *default-codepage* :type (or null codepage))
 
   (no-response nil :type boolean)
 
@@ -174,13 +174,14 @@ to the 3270 client."
     (return-from show-screen-opts (values resp err)))
 
   (when (screen-opts-post-send-callback opts)
+    (dbgmsg "SCO: sending callback.~%")
     (when (setf err
                 (funcall (screen-opts-post-send-callback opts)
                          (screen-opts-callback-data opts)))
       (return-from show-screen-opts (values resp err))))
 
   (unless (screen-opts-no-response opts)
-    ;; (dbgmsg "SCO: reading response.~%")
+    (dbgmsg "SCO: reading response.~%")
     (multiple-value-setq (resp err)
         (read-response conn
                        fm
@@ -193,7 +194,7 @@ to the 3270 client."
     ;; Strip spaces from field values unless the caller requested
     ;; that we maintain whitespace.
 
-    ;; (dbgmsg "SCO: munging fields.~%")
+    (dbgmsg "SCO: munging fields.~%")
     (dolist (fld (screen-fields screen))
       (unless (field-keepspaces fld)
         (let ((found
@@ -343,7 +344,7 @@ encountered.
 
     (handler-case
         ;; (write-sequence b (usocket:socket-stream conn))
-        (send-sequence b (usocket:socket-stream conn))
+        (send-sequence b conn)
       (error (e)
         (dbgmsg "SCI: error: sending~%")
         (return-from show-screen-internal (values nil e))))

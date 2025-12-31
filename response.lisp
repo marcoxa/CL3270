@@ -119,7 +119,7 @@ A synonym for HASH-TABLE."
   (declare (type usocket:stream-usocket c)
            (type field-map field-map)
            (type (or null device-info) dev)
-           (type codepage cp))
+           (type (or null codepage) cp))
 
   (let ((r (make-response))
         (cols 80)
@@ -242,7 +242,7 @@ A synonym for HASH-TABLE."
     (declare (type boolean infield)
              (type buffer fieldval)
              (type fixnum fieldpos)
-             (type hash-table vals))
+             (type dict vals))
 
     ;; Consume bytes until we get #xFFEF
 
