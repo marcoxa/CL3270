@@ -43,11 +43,11 @@ Of course, vendors messed up, as the Wikipedia page explains."
 
   ;; Let's just do codes.
 
-  (e2u nil :type (or null (vector rune 256)) :read-only t)
+  (e2u nil :read-only t)
 
   ;; Unicode code point to EBCDIC byte for code points #x00 to #xff.
 
-  (u2e nil :type (or null (vector octet 256)) :read-only t)
+  (u2e nil :read-only t)
 
   ;; Map of Unicode code points to EBCDIC bytes for code points above #xff.
 
@@ -190,6 +190,7 @@ The decoding handles graphic escape to codepage CP310 as needed."
         (repl-char-code (char-code #\ufffd)) ; Replacement Character Code.
         (sub-char (code-char #x1a)) ; Substitution Character.
         )
+    #-sbcl
     (declare (type (vector character) runes)
              (type boolean escape)
 	     (type (or null (vector rune 256)) e2u)
@@ -243,6 +244,7 @@ The encoding will handle graphic escape to CP310 as needed."
         (ge     (codepage-ge cp))
         (esub   (codepage-esub cp))
         )
+    #-sbcl
     (declare (type (vector octet) u2e)
              (type hash-table high2e u2ge)
              (type octet ge esub)) 

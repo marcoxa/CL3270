@@ -39,36 +39,14 @@
 ;;; Functions
 ;;; ---------
 
-(declaim (ftype (function ((vector octet) usocket:stream-usocket) null)
-                send-sequence)
-         (inline send-sequence))
 (defun send-sequence (seq ss)
-  (declare (type (vector octet) seq)
-           (type usocket:stream-usocket ss))
-
   (write-sequence seq ss)
   (force-output ss) ; Maybe it should be FINISH-OUTPUT.
   )
 
 
-(declaim (ftype (function ((vector octet)
-			   usocket:stream-usocket
-			   &rest t
-			   &key
-			   (:start fixnum)
-			   (:end (or null fixnum))
-			   &allow-other-keys)
-			  integer)
-                recv-sequence)
-         (inline recv-sequence))
 (defun recv-sequence (seq ss &rest keys &key (start 0) end &allow-other-keys)
-  (declare (type (vector octet) seq)
-           (type usocket:stream-usocket ss)
-           (ignore start end))
-  
-  (apply #'read-sequence seq ss keys)
-  ;; (apply #'usocket:socket-receive ss seq nil keys)
-  )
+  (apply #'read-sequence seq ss keys))
 
 
 (defun read-delimited-sequence (seq ss start-seq end-seq)
@@ -86,16 +64,10 @@ Exceptional Situations:
 
 Other, IO related, errors may be raised."
 
-  (declare (type (vector octet) seq)
-           (type (or null (vector octet)) start-seq end-seq))
-
   (assert (array-has-fill-pointer-p seq))
 
   (let ((ss-len (length start-seq))
-        (es-len (length end-seq))
-        )
-    (declare (type (mod 1024) ss-len es-len) ; Should be enough.
-             (ignorable ss-len))
+        (es-len (length end-seq)))
     (labels
         ((fail ()
            (return-from read-delimited-sequence
@@ -119,10 +91,9 @@ Other, IO related, errors may be raised."
                    do (fail)
                  end)
            (read-next))
-           
+
          (read-next ()
            (let ((b (read-byte ss nil nil)))
-             (declare (type (or null octet) b))
 
              (cond ((and (null b) (zerop es-len))
                     ;; We are (hopefully) done...
@@ -141,30 +112,23 @@ Other, IO related, errors may be raised."
              ))
 
          (maybe-read-end (end-seq-i)
-           (declare (type (mod 1024) end-seq-i)) ; Should be enough.
 
            (when (= end-seq-i es-len)
              ;; Finished.
              (success))
 
            (let ((b (read-byte ss nil nil)))
-             (declare (type (or null octet) b))
-               
              (cond ((= b (aref end-seq end-seq-i))
                     (vector-push-extend b seq)
                     (maybe-read-end (1+ end-seq-i)))
 
                    (t
                     (vector-push-extend b seq)
-                    (read-next)))))
-         ) ; labels
+                    (read-next)))))) ; labels
       (start))))
 
 
 (defun recv-sequence-no-hang (seq c &key (start 0) end (timeout 1.0))
-  (declare (type (vector octet) seq)
-           (type usocket:stream-usocket c)
-           (ignore start end))
 
   (assert (array-has-fill-pointer-p seq))
 
@@ -186,7 +150,6 @@ NEGOTIATE-TELNET will naively (e.g., not checking client responses)
 negotiate the options necessary for TN3270 or similar on a new telnet
 connection, C."
 
-  ;; (declare (type usocket:stream-server-usocket c))
   (write-sequence (vector +iac+ +do+ +terminal-type+) ss)
   (write-sequence (vector +iac+ +sb+ +terminal-type+ +send+ +iac+ +se+) ss)
   (write-sequence (vector +iac+ +do+ +eor-option+) ss)
@@ -218,9 +181,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
 
   (let ((sent-will-bin nil)
         (sent-will-eor nil)
-        (devtype nil)
-        )
-    (declare (type boolean sent-will-bin sent-will-eor))
+        (devtype nil))
 
     ;; Enable terminal type option.
 
@@ -305,7 +266,7 @@ necessary for TN3270 or similar on a new telnet connection, C."
            ;; documentation.
 
            (loop-finish))
-                    
+
     ;; Enter end of record mode.
 
     (unless sent-will-eor
@@ -323,9 +284,8 @@ necessary for TN3270 or similar on a new telnet connection, C."
             (check-option-response c +binary-option+ +will+ sent-will-eor sent-will-bin)))
 
     (model-device-info c devtype)
-  
+
     #| Old
-    ;; (declare (type usocket:stream-server-usocket c))
     (send-sequence (vector +iac+ +do+ +terminal-type+) ss)
     (send-sequence (vector +iac+ +sb+ +terminal-type+ +send+ +iac+ +se+) ss)
     (send-sequence (vector +iac+ +do+ +eor-option+) ss)
@@ -347,7 +307,6 @@ UNNEGOTIATE-TELNET will naively (e.g. not checking client responses)
 attempt to restore the telnet options state to what it was before
 NEGOTIATE-TELNET was called."
 
-  ;; (declare (type usocket:stream-server-usocket c))
   (write-sequence (vector +iac+ +wont+ +eor-option+ +iac+ +wont+ +binary+) ss)
   (write-sequence (vector +iac+ +dont+ +binary+) ss)
   (write-sequence (vector +iac+ +dont+ +eor-option+) ss)
@@ -366,7 +325,7 @@ NEGOTIATE-TELNET was called."
 
 FLUSH-CONNECTION discards all bytes that it can read from conn,
 allowing up to the duration TIMEOUT for the first byte to be read."
-  
+
   (loop
    (multiple-value-bind (ready time-remaining)
        (usocket:wait-for-input c :timeout timeout :ready-only t)
@@ -396,7 +355,7 @@ allowing up to the duration TIMEOUT for the first byte to be read."
                   (dbgmsg "timeout now ~S~%" timeout)
                   ))
               )
-           
+
              (time-remaining ; An error occurred.
               (dbgmsg "error while flushing.~%")
               (return-from flush-connection t)
@@ -466,30 +425,21 @@ SENT-EOR : a BOOLEAN
 SENT-BIN : a BOOLEAN
 "
 
-  (declare (type usocket:stream-usocket c)
-           (type octet option mode)
-           (type boolean sent-eor sent-bin))
-
   (handler-case
       (let ((buf (make-array 3
                              :element-type 'octet
                              :initial-element 0))
             (expected-yes 0)
             (expected-no 0)
-            (ss (usocket:socket-stream c))
-            )
-        (declare ;; (type (vector octet 3) buf)
-                 (type (vector (unsigned-byte 8) 3) buf)
-                 (dynamic-extent buf)
-                 (type octet expected-yes expected-no))
+            (ss (usocket:socket-stream c)))
 
         (dbgmsg "CHECK-OPTION-RESPONSE: mode ~D, +will ~D, +do+ ~D~%"
                 mode +will+ +do+)
 
         (cond ((= mode +do+) (setf expected-yes +will+ expected-no +wont+))
-          
+
               ((= mode +will+) (setf expected-yes +do+ expected-no +dont+))
-          
+
               (t (error 'telnet-error)))
 
         (dbgmsg "CHECK-OPTION-RESPONSE: reading...~%")
@@ -530,7 +480,7 @@ SENT-BIN : a BOOLEAN
                  (return-from check-option-response
                    (check-option-response c option mode sent-eor sent-bin)))
                 ))
-                         
+
         (when (= (aref buf 1) expected-no)
           (when (/= (aref buf 2) option)
             (error 'telnet-error))
@@ -572,16 +522,10 @@ SENT-BIN : a BOOLEAN
 (defun get-terminal-type (c)
   "Read the response to a \"send terminal type\" option subfield command."
 
-  (declare (type usocket:stream-usocket c))
-
   (let* ((buf (make-buffer :capacity 100))
          ;; (term-type "")
          (n (recv-sequence-no-hang buf c))
          )
-
-    (declare (type (vector octet 100) buf)
-             ;; (dynamic-extent buf) ; We SUBSEQ it, therefore...; but SBCL, of course, complains.
-             (type fixnum n))
 
     ;; At a minimum, with a one-character terminal type name, we
     ;; expect 7 bytes.
@@ -602,17 +546,14 @@ SENT-BIN : a BOOLEAN
 
     ;; Everything looks good. The terminal type is an ASCII string
     ;; between all the control/command bytes.
-    
+
     (octets-to-string (subseq buf 4 (- n 2)))))
-              
+
 
 ;;; model-device-info
 
 (defun model-device-info (c term-type &aux (ss (usocket:socket-stream c)))
   "Return the terminal model (as a DEVICE-INFO)."
-
-  (declare (type usocket:usocket c)
-           (type string term-type))
 
   (flet ((check-term-type (term-type)
            ;; No regexp!
@@ -642,14 +583,6 @@ SENT-BIN : a BOOLEAN
           (codepage nil)
           (ok t) ; General useful boolean
           )
-      (declare (type (integer 12 132) rows cols) ; Ok, quirky.
-               (type codepage-id cpid)
-               (type (mod 2048) n) ; Just for the heck of it; I know, I know.
-               (type boolean is-x3270 ok)
-               (type (vector octet 1) aid)
-               ;; (type function cpfunc)
-               (type (or null codepage) codepage)
-               )
 
       (cond ((check-term-type term-type)
              (case (aref term-type 9)
@@ -666,7 +599,7 @@ SENT-BIN : a BOOLEAN
                                           term-type
                                           ")")))
             ) ; cond
-      
+
       ;; Now we'll discover the terminal size and character set.
 
       ;; First, we perform an ERASE / WRITE ALTERNATE to clear the
@@ -687,7 +620,7 @@ SENT-BIN : a BOOLEAN
         (if rs
             (setq n (read-sequence aid ss)) ; If it errors, it errors.
 
-            
+
             ;; Else, got a timeout or an interruption.
             ;; In this case, we'll assume it's because the client
             ;; didn't reply to our query command. In that case, we'll
@@ -703,7 +636,7 @@ SENT-BIN : a BOOLEAN
       ;; only interested in the "Usable Area" SFID=#x81 QCODE=#x81 field and
       ;; "Character Sets" QCODE=#x85 field so we'll just consume any others.
       ;; Consume all data until the EOR is received.
-              
+
       (loop with l of-type fixnum = 0
             for buf = (telnet-read-n c 2)
             unless buf do (loop-finish) end
@@ -726,7 +659,7 @@ SENT-BIN : a BOOLEAN
                      ((and (= (aref buf 0) #x81) (= (aref buf 1) #x85))
                       ;; Character sets (codepage)
                       (setf cpid (get-codepage-id buf)))
-                     
+
                      ((and (= (aref buf 0) #x81) (= (aref buf 1) #xA1))
                       ;; RPQ Names. We use this to determine if the client
                       ;; is x3270 family.
@@ -741,23 +674,21 @@ SENT-BIN : a BOOLEAN
             ;; (codepage-to-function cpid)
             )
 
-      (cond (ok
-             ;; (setq codepage (funcall cpfunc)) ; No need for this.
+      (unless ok
+        (error "codepage with ID ~A not supported" cpid))
 
-             ;; But if x3270 family, assume that this is really the default
-             ;; "bracket" codepage, which reports as 37, not true CP37.
+      ;; (setq codepage (funcall cpfunc)) ; No need for this.
 
-             (when (and (= cpid 37) is-x3270)
-               (setq codepage *codepage-bracket*)))
+      ;; But if x3270 family, assume that this is really the default
+      ;; "bracket" codepage, which reports as 37, not true CP37.
 
-            (t ; else
-             (setq codepage nil)))
+      (when (and (= cpid 37) is-x3270)
+        (setq codepage *codepage-bracket*))
 
       (make-device-info :rows rows
                         :cols cols
                         :term-type term-type
-                        :codepage codepage)
-      )))
+                        :codepage codepage))))
 
 
 ;;; get-usable-area
@@ -773,8 +704,6 @@ Notes:
 
 A valid Usable Area reply will always include at least 18 (20 with
 length) bytes."
-
-  (declare (type (mod 1024) rows cols)) ; Let's exaggerate.
 
   (when (or (< (length buf) 18)
             (/= (aref buf 0) #x81)
@@ -811,28 +740,31 @@ length) bytes."
 (defun get-codepage-id (buf)
   "Get the codepage id."
 
+  ;; skip codepage decoding for now
+  (return-from get-codepage-id 37)
+
   ;; Initial validity check.
 
   (when (or (< (length buf) 11)
             (/= (aref buf 0) #x81)
             (/= (aref buf 1) #x85))
+    (dbgmsg "Cannot get codepage from buffer (len ~A first ~A second ~A)" (length buf) (aref buf 0) (aref buf 1))
     (return-from get-codepage-id 0))
 
   ;; If the GF bit is not set, no point in continuing.
 
   (when (/= (logand (aref buf 2) (ash 1 1)) (ash 1 1)) ; Quirky!
+    (dbgmsg "Cannot get codepage from buffer, GF bit not set")
     (return-from get-codepage-id 0))
 
   ;; Ok loop through the descriptors...
 
   (let ((dl (aref buf 10)) ; Descriptor length.
         (pos 11) ; First descriptor.
-        (buflen (length buf))
-        )
+        (buflen (length buf)))
 
-    (declare (type fixnum dl pos buflen))
-
-    (loop when (< buflen (+ pos dl))
+    (loop do (dbgmsg "at position ~A dl ~A" pos dl)
+          when (< buflen (+ pos dl))
             ;; No more descriptors.
             do (return-from get-codepage-id 0)
 
@@ -848,7 +780,7 @@ length) bytes."
                  (+ (ash (aref buf (+ pos dl -2)) 8)
                     (aref buf (+ pos dl -1))))
             )))
-            
+
 
 ;;; req-rpq-names
 ;;;
@@ -857,8 +789,6 @@ length) bytes."
 ;;; with {#x81, #xA1}.
 
 (defun get-rpq-names (buf)
-
-  (declare (type (vector unsigned-byte *) buf))
 
   (cond ((< (length buf) 16) nil)
 
@@ -869,7 +799,7 @@ length) bytes."
               (= (aref buf 14) #xaf7)
               (= (aref buf 15) #xa0))
          t)
-  
+
         (t nil)))
 
 
@@ -891,8 +821,7 @@ Notes:
 This doc string needs fixing."
 
   (let ((state :normal))
-    (declare (type (member :normal :command :subneg) state))
-    
+
     (dbgmsg "TR: telnet read~%")
 
     (handler-case
@@ -920,7 +849,7 @@ This doc string needs fixing."
                           ((= b +sb+)
                            (setf state :subneg)
                            (dbgmsg "entering telnet command subnegotiation state +SB+~%"))
-                          
+
                           ((and pass-eor (= b +eor+))
                            (dbgmsg "leaving telnet command state; returning EOR~%")
                            (return-from telnet-read

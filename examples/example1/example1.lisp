@@ -8,36 +8,8 @@
 (defparameter example1-screen1
   (make-screen
    "Example1 Screen1"
-   (make-field :row 0 :col 27 :intense t
-               :content "3270 example application")
-   (make-field :row 2 :col 0
-               :content "Welcome to the cl3270 example application. please enter your name.")
-   (make-field :row 4 :col 0
-               :content "First Name  . . .")
-   (make-field :row 4 :col 19 :name "fname" :write t :highlighting +underscore+)
-   (make-field :row 4 :col 40) ; Field "stop" character
-   (make-field :row 5 :col 0
-               :content "Last Name . . . .")
-   (make-field :row 5 :col 19 :name "lname" :write t :highlighting +underscore+)
-   (make-field :row 5 :col 40) ; Field "stop" character
-   (make-field :row 6 :col 0
-               :content "Password  . . . .")
-   (make-field :row 6 :col 19 :name "password" :write t :hidden t)
-   (make-field :row 6 :col 40) ; Field "stop" character
-   (make-field :row 8 :col 0
-               :content "Press")
-   (make-field :row 8 :col 6 :intense t :content "enter")
-   (make-field :row 8 :col 12
-               :content "to submit your name.")
-   (make-field :row 10 :col 0 :intense t
-               :color +red+ :name "errormsg") ; A blank field for error messages.
-   (make-field :row 14 :col 0
-               :content "Detected codepage:")
-   (make-field :row 14 :col 20 :name "codepage")
-   (make-field :row 15 :col 0
-               :content "The following should be left and right square brackets [ ]")
-   (make-field :row 22 :Col 0
-               :content "PF3 Exit")
+   (make-field :row 0 :col 0 :content "X")
+   (make-field :row 0 :col 79 :content "Y")
    ))
 
 
@@ -92,20 +64,17 @@
                          ))
 |#
 
-
 (defun cl3270-example1 (&key (handler 'cl3270-handle) (host "127.0.0.1") (debug nil))
   (prog1
       (usocket:with-socket-listener (conn host 3270
                                           :element-type '(unsigned-byte 8)
-                                          )
+                                          :reuse-address t)
         (format t ";;; CL3270: example1: server listening on host ~S, port 3270...~%"
                 host)
         (usocket:with-connected-socket (c (usocket:socket-accept conn))
           (let ((*do-debug* debug))
             (funcall handler c))))
     (format t ";;; CL3270: example1: server closed.~%")))
-
-
 
 #|
 (defun cl3270-handle (c &aux (field-values (make-hash-table :test #'equal)))
@@ -219,10 +188,10 @@
 
         (dbgmsg "CL3270 HANDLE: telnet negotiated; devinfo ~S.~2%" devinfo)
 
-        (if (null (codepage devinfo))
-            (setf (gethash "codepage" field-values) "(unknown)")
-            (setf (gethash "codepage" field-values)
-                  (codepage-id (codepage devinfo))))
+        (setf (gethash "codepage" field-values)
+              (if (codepage devinfo)
+                  (princ-to-string (codepage-id (codepage devinfo)))
+                  "(unknown)"))
 
         (loop named mainloop
               do
@@ -247,7 +216,7 @@
                       ;; blank.
 
                       (multiple-value-bind (resp err)
-                          (show-screen-opts screen1
+                          (show-screen-opts example1-screen1
                                             field-values
                                             c
                                             (make-screen-opts

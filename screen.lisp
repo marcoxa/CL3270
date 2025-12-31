@@ -58,8 +58,7 @@
   (color +default-color+ :type color)
   (highlighting +default-highlight+ :type highlight)
   (name "" :type string)
-  (keepspaces nil :type boolean)
-  )
+  (keepspaces nil :type boolean))
 
 
 (defmethod print-object ((f field) stream)
@@ -84,7 +83,7 @@
 
 SCREEN-OPTS are the options that callers may set when sending a screen
 to the 3270 client."
-  
+
   (altscreen nil :type (or null device-info))
 
   (codepage *default-codepage* :type codepage)
@@ -99,8 +98,7 @@ to the 3270 client."
 
   (post-send-callback nil :type (or null function))
 
-  (callback-data nil)
-  )
+  (callback-data nil))
 
 
 ;;; fieldmap
@@ -151,12 +149,7 @@ to the 3270 client."
                                 fm
                                 err
                                 (resp (make-response)))
-  (declare (type screen screen)
-           (type (or null dict) vals)
-           (type usocket:stream-usocket conn)
-           (type screen-opts opts)
-           (type response resp))
-  
+
 
   (dbgmsg "SCO: showing screen ~S~%" (screen-name screen))
 
@@ -246,40 +239,29 @@ encountered.
 
 
 (defun show-screen-internal (screen vals crow ccol conn clear dev cp)
-  (declare (type screen screen)
-           (type (or null dict) vals)
-           (type row-index crow)
-           (type col-index ccol)
-           (type usocket:usocket conn)
-           (type boolean clear)
-           (type (or null device-info) dev)
-           (type (or null codepage) cp)
-           )
 
   (dbgmsg "SCI: starting~%")
 
   (unless cp
     (setq cp *default-codepage*))
 
-  ;; (dbgmsg "SCI: codepage ~S~%" cp)
-  
+  (dbgmsg "SCI: codepage ~S dev ~A~%" cp dev)
+
   (let ((rows 24)
         (cols 80)
         (b (make-buffer))
-        (fm (make-fieldmap))
-        )
+        (fm (make-fieldmap)))
 
     (when dev
       (setf (values rows cols) (alt-dimensions dev)))
 
-    ;; (dbgmsg "SCI: rows ~S cols S~%" rows cols)
+    (dbgmsg "SCI: rows ~S cols ~S~%" rows cols)
 
     (if clear
         (if (not (and (= rows 24) (= cols 80)))
             (write-buffer b #x7E)  ; Erase/Write Alternate to terminal.
             (write-buffer b #xF5)) ; Erase/Write to terminal.
         (write-buffer b #xF1)) ; Write to terminal.
-
 
     (if clear
         (write-buffer b #xC3)  ; WCC = Reset, Unlock Keyboard, Reset MDT.
@@ -294,15 +276,14 @@ encountered.
 
     (dolist (fld (screen-fields screen))
       (let ((frow (field-row fld))
-            (fcol (field-col fld))
-            )
+            (fcol (field-col fld)))
 
         (unless (or (minusp frow) (>= frow rows)
                     (minusp fcol) (>= fcol cols))
-          
+
           (write-buffer* b (sba frow fcol cols))
           (write-buffer* b (build-field fld)) ; Double check this!
-          
+
           (let ((content (field-content fld)))
             (when (and vals (field-name fld) (string/= (field-name fld) ""))
               (multiple-value-bind (v found)
@@ -310,11 +291,10 @@ encountered.
                 (when found
                   (setf content v))))
 
-            ;; (dbgmsg "SCI: content ~S~%" content)
+            (dbgmsg "SCI: content ~S~%" content)
 
             (when (string/= content "")
-              (write-buffer* b (encode-characters cp content))
-              )
+              (write-buffer* b (encode-characters cp content)))
 
             (when (field-write fld)
               (let ((bufaddr (+ (* frow cols) fcol)))
@@ -349,15 +329,11 @@ encountered.
         (return-from show-screen-internal (values nil e))))
 
 
-    (values fm nil)
-    ) ; let
-  ) ; show-screen-internal
+    (values fm nil)))
 
 
 (defun sba (row col cols)
   "The \"set buffer address\" 3270 command."
-
-  (declare (type octet row cols cols))
 
   (let ((result (make-buffer :capacity 3)))
     (write-buffer result #x11) ; SBA
@@ -462,45 +438,43 @@ This function will include the appropriate SBA command."
   result)
 
 
-(defun getpos (row col cols
-                   &aux
-                   (result (make-buffer :capacity 3))
-                   (address (+ (* row cols) col))
-                   (hi 0)
-                   (lo 0)
-                   )
+(defun getpos (row col cols)
   "Translate ROW and COL to buffer address control characters."
+  (let ((result (make-buffer :capacity 3))
+        (address (+ (* row cols) col))
+        (hi 0)
+        (lo 0))
+    (when (< address (ash 1 12))
+      ;; Use 12-bit addressing if the buffer address fits in 12 bits.
 
-  (when (< address (ash 1 12))
-    ;; Use 12-bit addressing if the buffer address fits in 12 bits.
-    
-    (setf hi (ash (logand address #xFC0) -6)
-          lo (logand address #x3F))
+      (setf hi (ash (logand address #xFC0) -6)
+            lo (logand address #x3F))
 
 
-    (write-buffer result (aref *codes* hi))
-    (write-buffer result (aref *codes* lo))
-    (return-from getpos result))
+      (write-buffer result (aref *codes* hi))
+      (write-buffer result (aref *codes* lo))
+      (return-from getpos result))
 
-  ;; Otherwise, use 14-bit addressing. The library limits terminal
-  ;; size to fit within 14-bit addressing, because 16-bit addressing
-  ;; would require us to track state that the current API design
-  ;; doesn't lend itself to.  Someday, perhaps in a v2 library
-  ;; version, we'll support absurdly large terminal sizes. But for
-  ;; now, 14 bits is as big as we can go.
+    ;; Otherwise, use 14-bit addressing. The library limits terminal
+    ;; size to fit within 14-bit addressing, because 16-bit addressing
+    ;; would require us to track state that the current API design
+    ;; doesn't lend itself to.  Someday, perhaps in a v2 library
+    ;; version, we'll support absurdly large terminal sizes. But for
+    ;; now, 14 bits is as big as we can go.
 
-  (setf hi (ash (logand address #x3F00) -8)
-        lo (logand address #xFF))
+    (setf hi (ash (logand address #x3F00) -8)
+          lo (logand address #xFF))
 
-  (when (= lo #xFF)
+    (when (= lo #xFF)
+      (write-buffer result hi)
+      (write-buffer result #xFF)
+      (write-buffer result lo)
+      (return-from getpos result))
+
     (write-buffer result hi)
-    (write-buffer result #xFF)
     (write-buffer result lo)
-    (return-from getpos result))
 
-  (write-buffer result hi)
-  (write-buffer result lo)
-  result)
+    result))
 
 
 ;;;; end of file -- screen.lisp
