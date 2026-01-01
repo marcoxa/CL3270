@@ -185,7 +185,7 @@ CONN -- the network connection to the 3270 client.
            (type col-index curs-col)
            (type usocket:stream-usocket conn)
            (type (or null device-info) devinfo)
-           (type codepage codepage cp))
+           (type (or null codepage) codepage cp))
   
   (when (and cp-supplied-p (codepage-p codepage))
     (setf cp codepage))
