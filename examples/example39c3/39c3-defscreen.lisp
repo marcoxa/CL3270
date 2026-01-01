@@ -32,53 +32,70 @@ PF3 Exit
                   :intense t)
            (:from (17 21) :len 20
                   :name "name" :write t :highlighting +underscore+)
-           (:from (18 21) :len 59
+           (:from (18 21) :len 58
                   :name "message" :write t :highlighting +underscore+)
            (:from (20 6) :len 5
                   :intense t)
-           (:from (21 0) :len 80
+           (:from (21 0) :len 79
                   :color +red+ :name "errormsg")))
 
+(defscreen screen2 "
+                           3270 Example Application
 
-(defparameter screen2
-  (make-screen
-   "Screen2"
-   (make-field :row 0 :col 0 :content "X")
-   (make-field :row 0 :col 79 :content "Y")
-   (make-field :row 0 :col 27 :intense t
-               :content "3270 Example Application")
-   (make-field :row 2 :col 0
-               :content "Thank you for submitting your name. Here's what I know:")
-   (make-field :row 4 :col 0 :content "Your first name is")
-   (make-field :row 4 :col 19 :name "fname") ; We're giving this field
-                                             ; a name to replace its
-                                             ; value at runtime.
-   (make-field :row 5 :col 0 :content "And your last name is")
-   (make-field :row 5 :col 22 :name "lname") ; We're giving this field
-                                             ; a name to replace its
-                                             ; value at runtime.
-   (make-field :row 6 :col 0 :name "passwordOutput")
-   (make-field :row 8 :col 0 :content "Press")
-   (make-field :row 8 :col 6 :intense t :Content "enter")
-   (make-field :row 8 :col 12 :content "to enter your name again or")
-   (make-field :row 8 :col 41 :intense t :Content "PF3")
-   (make-field :row 8 :col 45 :content "to quit and disconnect.")
-   (make-field :row 11 :Col 0 :color +turquoise+ :highlighting +reverse-video+
-               :content "Here is a field with extended attributes.")
-   (make-field :row 11 :col 42) ; Remember to "stop" fields with a
-                                ; regular field to clear the reverse
-                                ; video for example.
-   (make-field :row 14 :col 0 :name "position")
-   (make-field :row 22 :col 0 :content "PF3 Exit")))
+Thank you for submitting your name. Here's what I know:
+
+Your first name is                      and you entered this message:
+                                                                               
 
 
-(defparameter goodbye-screen
-  (make-screen
-   "Goodbye screen"
-   (make-field :row 0 :col 27 :intense t
-               :content "3270 Example Application")
-   (make-field :row 2 :col 0
-               :content "Thank you for using this application. Goodbye.")))
+Press enter to enter your name again or  PF3 to quit and disconnect.
+
+
+Here is a field with extended attributes.
+
+
+
+
+
+
+
+
+
+
+PF3 Exit
+"
+  :fields ((:from (0 27) :len 24 :intense t)
+           (:from (4 19) :len 20 :highlighting +underscore+ :name "name")
+           (:from (5 0) :len 79 :highlighting +underscore+ :name "message")
+           (:from (8 6) :len 5 :intense t)
+           (:from (11 0) :len 41 :color +turquoise+ :highlighting +reverse-video+)))
+
+(defscreen goodbye-screen "
+                           3270 Example Application
+
+Thank you for using this application! Goodbye.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+  :fields ((:from (0 27) :len 24 :intense t)))
 
 (defun cl3270-congress (&key (handler 'cl3270-handle) (host "127.0.0.1") (debug nil))
   (prog1
@@ -140,7 +157,7 @@ PF3 Exit
                                             (make-screen-opts
                                              :codepage (codepage devinfo)
                                              :cursor-row 17
-                                             :cursor-col 22))
+                                             :cursor-col 21))
 
                         (when err
                           (format *error-output*
