@@ -16,8 +16,9 @@
 (defun make-declared-field (field content)
   (destructuring-bind (&key from &allow-other-keys) field
     (destructuring-bind (row col) from
-      `(make-field :row ,row :col ,col :content ,content
-                   ,@(alexandria:remove-from-plist field :from :len)))))
+      (remf field :from)
+      (remf field :len)
+      `(make-field :row ,row :col ,col :content ,content ,@field))))
 
 
 (defun make-row-to-field-map (fields static-row-definitions)
