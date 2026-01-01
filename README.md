@@ -50,6 +50,16 @@ Now you can start a **3270** *terminal emulator*, e.g.,
 business...
 
 
+BELLS AND WHISTLES
+------------------
+
+Thanks to Hans Hübner, now you have a `defscreen` macro to simplify
+screens definitions.  Not only, always thanks to Hans, if you are
+using the editor (as in: thou shalt not have other editor than Emacs)
+you can load the minor mode `cl3270-screen-mode` from file
+`extra/cl3270-screen-mode.el` to edit screens in a WISIWYG way.
+
+
 VERSIONS
 --------
 
