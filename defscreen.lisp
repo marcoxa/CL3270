@@ -96,10 +96,12 @@ implicit PROGN."
       +screen-columns+))
 
 (defun static-text-end-position (row-map start-col)
-  (loop for col from start-col below +screen-columns+
-        if (and (eql (car (aref row-map col)) #\Space)
-                (or (= col (1- +screen-columns+))
-                    (eql (car (aref row-map (1+ col))) #\Space)))
+  (loop with attribute = (cdr (aref row-map start-col))
+        for col from (1+ start-col) below +screen-columns+
+        if (or (and (eql (car (aref row-map col)) #\Space)
+                    (or (= col (1- +screen-columns+))
+                        (eql (car (aref row-map (1+ col))) #\Space)))
+               (not (equal (cdr (aref row-map col)) attribute)))
           return col))
 
 (defun find-field (cell-map row col)
@@ -107,7 +109,7 @@ implicit PROGN."
          (attributes (cdr (aref row-map col)))
          (end (if attributes
                   (attribute-change-position row-map (1+ col) attributes)
-                  (static-text-end-position row-map (1+ col))))
+                  (static-text-end-position row-map col)))
          (content (map 'string #'car (subseq row-map col end))))
     (values `(make-field :row ,(if (> col 0) row (1- row))
                          :col ,(1- (if (> col 0) col +screen-columns+))
