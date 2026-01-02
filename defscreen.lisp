@@ -8,12 +8,11 @@
 ;;;; See the file COPYING for copyright and licensing information.
 
 (in-package "CL3270")
-(in-package :cl3270)
 
 (defconstant +screen-rows+ 24)
 (defconstant +screen-columns+ 80)
 
-;; stuff copied from alexandria to avoid dependency
+;;;; Stuff copied from alexandria to avoid dependency
 
 (defun remove-from-plist (plist &rest keys)
   "Returns a property-list with same keys and values as PLIST, except that keys
@@ -144,3 +143,6 @@ implicit PROGN."
 
 (defmacro defscreen (name screen &key fields)
   `(defparameter ,name (make-screen ,(string name) ,@(parse-screen screen fields))))
+
+
+;;;; end of file -- defscreen.lisp
