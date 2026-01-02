@@ -59,6 +59,7 @@
   (highlighting +default-highlight+ :type highlight)
   (name "" :type string)
   (keepspaces nil :type boolean)
+  (position-only nil)
   )
 
 
