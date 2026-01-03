@@ -303,7 +303,8 @@ encountered.
                     (minusp fcol) (>= fcol cols))
           
           (write-buffer* b (sba frow fcol cols))
-          (write-buffer* b (build-field fld)) ; Double check this!
+          (unless (field-position-only fld)
+            (write-buffer* b (build-field fld))) ; Double check this!
           
           (let ((content (field-content fld)))
             (when (and vals (field-name fld) (string/= (field-name fld) ""))
